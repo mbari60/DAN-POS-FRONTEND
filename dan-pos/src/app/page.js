@@ -5,5 +5,5 @@ export default function RootPage() {
 }
 
 export const metadata = {
-  title: 'POS System',
+  title: 'Managerp',
 };

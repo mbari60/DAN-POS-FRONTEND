@@ -17,7 +17,8 @@ import {
   Search,
   UserPlus,
   Key,
-  Eye
+  Eye,
+  Grid3X3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,12 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Import our components
+import RoleManagement from '@/components/roles/RoleManagement';
+import RolePermissions from '@/components/roles/RolePermissions';
+import UserManagement from '@/components/users/userManagement';
 
 const AdminSystem = () => {
   const { user, isAuthenticated, isInitialized } = useAuth();
@@ -33,67 +40,17 @@ const AdminSystem = () => {
   
   // State for admin system
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddingUser, setIsAddingUser] = useState(false);
-  const [isEditingUser, setIsEditingUser] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('users');
 
-  // Sample data
-  const [users] = useState([
-    { 
-      id: 1, 
-      name: 'John Doe', 
-      email: 'john@example.com', 
-      role: 'admin', 
-      status: 'active',
-      lastLogin: '2023-10-05 14:30',
-      permissions: ['all']
-    },
-    { 
-      id: 2, 
-      name: 'Jane Smith', 
-      email: 'jane@example.com', 
-      role: 'manager', 
-      status: 'active',
-      lastLogin: '2023-10-04 09:15',
-      permissions: ['inventory', 'reports']
-    },
-    { 
-      id: 3, 
-      name: 'Mike Johnson', 
-      email: 'mike@example.com', 
-      role: 'cashier', 
-      status: 'inactive',
-      lastLogin: '2023-09-28 16:45',
-      permissions: ['sales']
-    },
-    { 
-      id: 4, 
-      name: 'Sarah Wilson', 
-      email: 'sarah@example.com', 
-      role: 'manager', 
-      status: 'active',
-      lastLogin: '2023-10-05 11:20',
-      permissions: ['inventory', 'sales']
-    },
-  ]);
-
+  // Sample data for dashboard
   const [systemStats] = useState({
     totalUsers: 24,
     activeUsers: 18,
     adminUsers: 3,
-    todayLogins: 12
+    todayLogins: 12,
+    totalRoles: 8,
+    systemHealth: 'Good'
   });
-
-  const permissionsList = [
-    { id: 'inventory', name: 'Inventory Management' },
-    { id: 'sales', name: 'Sales Processing' },
-    { id: 'reports', name: 'Reports Access' },
-    { id: 'settings', name: 'System Settings' },
-    { id: 'users', name: 'User Management' }
-  ];
-
-  const roles = ['admin', 'manager', 'cashier', 'viewer'];
 
   // Additional protection - only admins should access this page
   useEffect(() => {
@@ -110,32 +67,6 @@ const AdminSystem = () => {
     );
   }
 
-  const handleAddUser = () => {
-    // In a real app, this would call an API
-    setIsAddingUser(false);
-    alert('User added successfully!');
-  };
-
-  const handleEditUser = () => {
-    // In a real app, this would call an API
-    setIsEditingUser(false);
-    setSelectedUser(null);
-    alert('User updated successfully!');
-  };
-
-  const handleDeleteUser = (userId) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      // In a real app, this would call an API
-      alert('User deleted successfully!');
-    }
-  };
-
-  // Filter users based on search
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   // Render different sections based on selection
   const renderActiveSection = () => {
     switch (activeSection) {
@@ -145,159 +76,41 @@ const AdminSystem = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>User Management</CardTitle>
+                  <CardTitle>User & Role Management</CardTitle>
                   <CardDescription>
-                    Manage system users and permissions
+                    Manage system users, roles, and permissions
                   </CardDescription>
                 </div>
-                <Button onClick={() => setIsAddingUser(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                    <Input
-                      placeholder="Search users..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                  <Select defaultValue="all">
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All Roles" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      {roles.map(role => (
-                        <SelectItem key={role} value={role}>
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select defaultValue="all">
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="border rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50">
-                        <th className="p-3 text-left">User</th>
-                        <th className="p-3 text-left">Role</th>
-                        <th className="p-3 text-left">Status</th>
-                        <th className="p-3 text-left">Last Login</th>
-                        <th className="p-3 text-left">Permissions</th>
-                        <th className="p-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map(user => (
-                        <tr key={user.id} className="border-b">
-                          <td className="p-3">
-                            <div className="font-medium">{user.name}</div>
-                            <div className="text-gray-500 text-sm">{user.email}</div>
-                          </td>
-                          <td className="p-3">
-                            <Badge variant={user.role === 'admin' ? 'destructive' : user.role === 'manager' ? 'default' : 'outline'}>
-                              {user.role}
-                            </Badge>
-                          </td>
-                          <td className="p-3">
-                            <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                              {user.status}
-                            </Badge>
-                          </td>
-                          <td className="p-3">{user.lastLogin}</td>
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-1">
-                              {user.permissions.map(perm => (
-                                <Badge key={perm} variant="outline" className="text-xs">
-                                  {perm}
-                                </Badge>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="p-3 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setIsEditingUser(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleDeleteUser(user.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {isAddingUser && (
-                  <div className="mt-6">
-                    {/* Add User Modal */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Add New User</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <Input placeholder="Name" />
-                          <Input placeholder="Email" />
-                          <Select>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {roles.map(role => (
-                                <SelectItem key={role} value={role}>
-                                  {role.charAt(0).toUpperCase() + role.slice(1)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor="status">Active</Label>
-                            <Switch id="status" />
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter>
-                        <Button onClick={handleAddUser}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add User
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsAddingUser(false)}>
-                          Cancel
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  </div>
-                )}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <TabsTrigger value="users" className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Users
+                    </TabsTrigger>
+                    <TabsTrigger value="roles" className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Roles
+                    </TabsTrigger>
+                    <TabsTrigger value="permissions" className="flex items-center gap-2">
+                      <Key className="h-4 w-4" />
+                      Permissions
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="users">
+                    <UserManagement />
+                  </TabsContent>
+                  
+                  <TabsContent value="roles">
+                    <RoleManagement />
+                  </TabsContent>
+                  
+                  <TabsContent value="permissions">
+                    <RolePermissions />
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>
@@ -307,51 +120,142 @@ const AdminSystem = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Dashboard</CardTitle>
-                <CardDescription>Quick stats about the system</CardDescription>
+                <CardTitle>System Dashboard</CardTitle>
+                <CardDescription>Overview of system health and statistics</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Total Users</CardTitle>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-600" />
+                        Users
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center">
-                        <span className="text-3xl font-semibold">{systemStats.totalUsers}</span>
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <div className="text-3xl font-bold">{systemStats.totalUsers}</div>
+                          <div className="text-sm text-muted-foreground">Total Users</div>
+                        </div>
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                          {systemStats.activeUsers} Active
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-gradient-to-br from-green-50 to-green-100">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-green-600" />
+                        Roles & Permissions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <div className="text-3xl font-bold">{systemStats.totalRoles}</div>
+                          <div className="text-sm text-muted-foreground">System Roles</div>
+                        </div>
+                        <Badge variant="outline" className="bg-green-100 text-green-800">
+                          {systemStats.adminUsers} Admins
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-purple-600" />
+                        Activity
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <div className="text-3xl font-bold">{systemStats.todayLogins}</div>
+                          <div className="text-sm text-muted-foreground">Today's Logins</div>
+                        </div>
+                        <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                          This Week
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Recent Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {[
+                          { user: 'John Doe', action: 'Logged in', time: '2 minutes ago' },
+                          { user: 'Jane Smith', action: 'Updated inventory', time: '15 minutes ago' },
+                          { user: 'Mike Johnson', action: 'Created new user', time: '1 hour ago' },
+                          { user: 'System', action: 'Nightly backup completed', time: '3 hours ago' }
+                        ].map((activity, index) => (
+                          <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
+                            <div>
+                              <div className="font-medium">{activity.user}</div>
+                              <div className="text-sm text-muted-foreground">{activity.action}</div>
+                            </div>
+                            <div className="text-sm text-muted-foreground">{activity.time}</div>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Active Users</CardTitle>
+                      <CardTitle className="text-lg">System Health</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center">
-                        <span className="text-3xl font-semibold">{systemStats.activeUsers}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Admin Users</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center">
-                        <span className="text-3xl font-semibold">{systemStats.adminUsers}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Logins Today</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center">
-                        <span className="text-3xl font-semibold">{systemStats.todayLogins}</span>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full ${systemStats.systemHealth === 'Good' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span>System Status</span>
+                          </div>
+                          <Badge variant={systemStats.systemHealth === 'Good' ? 'default' : 'destructive'}>
+                            {systemStats.systemHealth}
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>API Response Time</span>
+                            <span className="font-mono">142ms</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-green-500 h-2 rounded-full" style={{width: '85%'}}></div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Database Load</span>
+                            <span className="font-mono">24%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-blue-500 h-2 rounded-full" style={{width: '24%'}}></div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Storage Usage</span>
+                            <span className="font-mono">62%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-amber-500 h-2 rounded-full" style={{width: '62%'}}></div>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -366,19 +270,51 @@ const AdminSystem = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="p-6">
-        <div className="flex items-center gap-4">
-          <Button onClick={() => setActiveSection('dashboard')}>
-            <BarChart3 className="h-4 w-4 mr-2" />
+      <div className="container mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Admin System</h1>
+          <p className="text-muted-foreground">
+            Manage users, roles, permissions, and monitor system health
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap gap-2 mb-6">
+          <Button 
+            onClick={() => setActiveSection('dashboard')} 
+            variant={activeSection === 'dashboard' ? 'default' : 'outline'}
+            className="flex items-center gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
             Dashboard
           </Button>
-          <Button onClick={() => setActiveSection('users')}>
-            <Users className="h-4 w-4 mr-2" />
-            Users
+          <Button 
+            onClick={() => setActiveSection('users')} 
+            variant={activeSection === 'users' ? 'default' : 'outline'}
+            className="flex items-center gap-2"
+          >
+            <Users className="h-4 w-4" />
+            User Management
+          </Button>
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
+            disabled
+          >
+            <Settings className="h-4 w-4" />
+            System Settings
+          </Button>
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
+            disabled
+          >
+            <Grid3X3 className="h-4 w-4" />
+            Audit Logs
           </Button>
         </div>
+        
         {renderActiveSection()}
       </div>
     </div>
