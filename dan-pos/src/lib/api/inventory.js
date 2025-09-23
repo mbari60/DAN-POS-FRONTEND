@@ -104,15 +104,6 @@ export const getLowStockItems = async () => {
 };
 
 
-// Stock Movement operations
-// export const getStockMovements = async (params = {}) => {
-//   try {
-//     const response = await api.get('/api/inventory/stock-movements/', { params });
-//     return response.data;
-//   } catch (error) {
-//     throw new Error(error.response?.data?.message || 'Failed to fetch stock movements');
-//   }
-// };
 
 // Stock Adjustment operations
 export const getStockAdjustments = async (params = {}) => {
@@ -142,17 +133,6 @@ export const getStockAlerts = async () => {
     throw new Error(error.response?.data?.message || 'Failed to fetch stock alerts');
   }
 };
-
-// export const getMovementSummary = async (days = 30) => {
-//   try {
-//     const response = await api.get('/api/inventory/inventory-reports/movement-summary/', {
-//       params: { days }
-//     });
-//     return response.data;
-//   } catch (error) {
-//     throw new Error(error.response?.data?.message || 'Failed to fetch movement summary');
-//   }
-// };
 
 export const getValuationReport = async () => {
   try {
@@ -302,19 +282,6 @@ export const deleteItemPrice = async (id) => {
   }
 };
 
-
-// export const getStores = async (params = {}) => {
-//   try {
-//     const response = await api.get('/api/inventory/stores/', { params });
-//     // Your API returns stores directly, not in results
-//     return {
-//       data: response.data.results || response.data,  // Handle both formats
-//       count: response.data.count || (response.data.results ? response.data.results.length : response.data.length)
-//     };
-//   } catch (error) {
-//     throw new Error(error.response?.data?.message || 'Failed to fetch stores');
-//   }
-// };
 
 export const createStore = async (storeData) => {
   try {

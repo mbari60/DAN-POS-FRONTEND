@@ -1,21 +1,12 @@
 // app/inventory/page.jsx
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/Navbar';
 import InventorySidebar from '@/components/InventorySidebar';
 import { useRouter } from 'next/navigation';
-import { 
-  Loader2, 
-} from 'lucide-react';
-import { toast } from 'react-toastify';
-import { 
-  getItems,
-  getStores,
-} from '@/lib/api/inventory';
-// import InventoryOverview from './overview/page';
 import ItemManagement from './itemManagement/page';
 import StoreManagement from './stores/page';
 import StockManagement from './adjustment/page';
@@ -36,42 +27,6 @@ const InventorySystem = () => {
     }
   }, [isAuthenticated, isInitialized, router]);
 
-  // Load real data from API
-  // useEffect(() => {
-  //   const loadData = async () => {
-  //     try {
-  //       setLoading(true);
-  //       const [itemsData, storesData] = await Promise.all([
-  //         getItems(),
-  //         getStores()
-  //       ]);
-        
-  //       setItems(itemsData.results || itemsData);
-  //       setStores(storesData.results || storesData);
-        
-  //       if (storesData.results?.length > 0 || storesData.length > 0) {
-  //         setSelectedStore(storesData.results?.[0] || storesData[0]);
-  //       }
-  //     } catch (error) {
-  //       toast.error('Failed to load inventory data');
-  //       console.error('Error loading data:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   if (isAuthenticated) {
-  //     loadData();
-  //   }
-  // }, [isAuthenticated]);
-
-  // if (!isInitialized) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center">
-  //       <Loader2 className="h-8 w-8 animate-spin" />
-  //     </div>
-  //   );
-  // }
 
   // Render different components based on active selection
   const renderActiveComponent = () => {
