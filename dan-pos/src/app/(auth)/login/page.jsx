@@ -15,7 +15,7 @@ const Login = () => {
   const { login, isAuthenticated, isLoading: authLoading, isInitialized } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('from') || '/pos-sale';
+  const redirectTo = searchParams.get('from') || '/sales';
 
   useEffect(() => {
     if (isInitialized && isAuthenticated) {

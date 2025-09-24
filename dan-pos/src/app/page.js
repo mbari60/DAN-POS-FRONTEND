@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 export default function RootPage() {
-  redirect('/pos-sale');
+  redirect('/sales');
 }
 
 export const metadata = {

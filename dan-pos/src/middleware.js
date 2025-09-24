@@ -3,7 +3,7 @@ import { getTokenFromRequest } from './lib/auth';
 
 // Define public routes that don't require authentication
 const publicRoutes = ['/login'];
-const protectedRoutes = ['/', '/protected', '/pos-sale', '/profile'];
+const protectedRoutes = ['/', '/protected', '/sales', '/profile'];
 
 export function middleware(request) {
   const token = getTokenFromRequest(request);
@@ -28,7 +28,7 @@ export function middleware(request) {
 
   // Redirect to dashboard if authenticated and trying to access login
   if (token && isPublicRoute) {
-    return NextResponse.redirect(new URL('/pos-sale', request.url));
+    return NextResponse.redirect(new URL('/sales', request.url));
   }
 
   return NextResponse.next();
@@ -39,7 +39,7 @@ export const config = {
     '/',
     '/protected/:path*',
     '/login',
-    '/pos-sale/:path*',
+    '/sales/:path*',
     '/changepassword/:path*'
   ],
 };

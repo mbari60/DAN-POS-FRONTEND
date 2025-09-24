@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import SuppliersManagement from './Suppliers/SuppliersManagement';
 import PurchaseOrdersManagement from './purchaseorders/page';
 import GoodsReceiptsManagement from './grn/page';
+import SupplierPaymentsManagement from './SupplierPayments/page';
 
 const ProcurementSystem = () => {
   const { isAuthenticated, isInitialized } = useAuth();
@@ -38,7 +39,7 @@ const ProcurementSystem = () => {
         return <SuppliersManagement />;
 
       case 'payments':
-        return <SuppliersManagement />;
+        return <SupplierPaymentsManagement />;
 
       case 'reports':
         return <SuppliersManagement />;

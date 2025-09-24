@@ -73,9 +73,9 @@ const Navbar = () => {
   const navigation = [
     {
       name: 'POS Sale',
-      href: '/pos-sale',
+      href: '/sales',
       icon: ShoppingCart,
-      current: pathname === '/pos-sale' || pathname === '/',
+      current: pathname === '/sales' || pathname === '/',
     },
     {
       name: 'Procurement',
