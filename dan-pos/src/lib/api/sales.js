@@ -149,14 +149,14 @@ export const completeSaleInvoice = async (id) => {
   }
 };
 
-export const voidSaleInvoice = async (id, voidData) => {
-  try {
-    const response = await api.post(`/api/sales/sale-invoices/${id}/void/`, voidData);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to void sale invoice');
-  }
-};
+// export const voidSaleInvoice = async (id, voidData) => {
+//   try {
+//     const response = await api.post(`/api/sales/sale-invoices/${id}/void/`, voidData);
+//     return response.data;
+//   } catch (error) {
+//     throw new Error(error.response?.data?.message || 'Failed to void sale invoice');
+//   }
+// };
 
 export const getInvoicePaymentHistory = async (invoiceId) => {
   try {
@@ -429,48 +429,99 @@ export const getSaleReturn = async (id) => {
   }
 };
 
-export const createSaleReturn = async (returnData) => {
-  try {
-    const response = await api.post('/api/sales/sale-returns/', returnData);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to create sale return');
-  }
-};
 
 export const updateSaleReturn = async (id, returnData) => {
   try {
-    const response = await api.patch(`/api/sales/sale-returns/${id}/`, returnData);
+    console.log('Updating sale return:', id, returnData);
+    
+    // Format data same as create
+    const formattedData = {
+      ...returnData,
+      original_invoice: parseInt(returnData.original_invoice),
+      customer: parseInt(returnData.customer),
+      store: parseInt(returnData.store),
+      restocking_fee: returnData.restocking_fee ? parseFloat(returnData.restocking_fee) : 0.00,
+      lines: returnData.lines.map(line => ({
+        original_line: parseInt(line.original_line),
+        item: parseInt(line.item),
+        original_quantity: parseInt(line.original_quantity),
+        quantity_returned: parseInt(line.quantity_returned),
+        return_unit_price: parseFloat(line.return_unit_price),
+        condition: line.condition || 'good'
+      }))
+    };
+
+    const response = await api.patch(`/api/sales/sale-returns/${id}/`, formattedData);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to update sale return');
+    console.error('Update return error:', error);
+    const errorDetails = error.response?.data;
+    let message = 'Failed to update sale return';
+    
+    if (errorDetails) {
+      if (errorDetails.error) message = errorDetails.error;
+      else if (errorDetails.message) message = errorDetails.message;
+      else if (typeof errorDetails === 'object') {
+        const fieldErrors = Object.entries(errorDetails)
+          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+          .join('; ');
+        message = fieldErrors || message;
+      }
+    }
+    
+    throw new Error(message);
   }
 };
 
-export const approveSaleReturn = async (id, approvalData) => {
+export const approveSaleReturn = async (returnId, data) => {
   try {
-    const response = await api.post(`/api/sales/sale-returns/${id}/approve/`, approvalData);
+    const response = await api.post(  
+      `/api/sales/sale-returns/${returnId}/approve/`,
+      data
+    );
+    console.log('Approval response:', response.data); 
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to approve sale return');
+    console.error('Approval error details:', error.response?.data);
+    throw new Error(
+      error.response?.data?.error || 
+      error.response?.data?.message || 
+      'Failed to approve sale return'
+    );
   }
 };
 
 export const rejectSaleReturn = async (id, rejectionData) => {
   try {
-    const response = await api.post(`/api/sales/sale-returns/${id}/reject/`, rejectionData);
+    const response = await api.post(
+      `/api/sales/sale-returns/${id}/reject/`, 
+      rejectionData
+    );
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to reject sale return');
+    console.error('Rejection error details:', error.response?.data);
+    throw new Error(
+      error.response?.data?.error || 
+      error.response?.data?.message || 
+      'Failed to reject sale return'
+    );
   }
 };
 
 export const completeSaleReturn = async (id, completionData) => {
   try {
-    const response = await api.post(`/api/sales/sale-returns/${id}/complete/`, completionData);
+    const response = await api.post(
+      `/api/sales/sale-returns/${id}/complete/`, 
+      completionData
+    );
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to complete sale return');
+    console.error('Completion error details:', error.response?.data);
+    throw new Error(
+      error.response?.data?.error || 
+      error.response?.data?.message || 
+      'Failed to complete sale return'
+    );
   }
 };
 
@@ -578,12 +629,40 @@ export const getExpense = async (id) => {
   }
 };
 
+// export const createExpense = async (expenseData) => {
+//   try {
+//     const response = await api.post('/api/sales/expenses/', expenseData);
+//     return response.data;
+//   } catch (error) {
+//     throw new Error(error.response?.data?.message || 'Failed to create expense');
+//   }
+// };
+
 export const createExpense = async (expenseData) => {
   try {
-    const response = await api.post('/api/sales/expenses/', expenseData);
+    // Ensure all data is properly formatted
+    const formattedData = {
+      ...expenseData,
+      amount: parseFloat(expenseData.amount).toFixed(2),
+      store: parseInt(expenseData.store),
+      // Remove any undefined or null values that might cause serializer issues
+    };
+    
+    // Clean the data object
+    Object.keys(formattedData).forEach(key => {
+      if (formattedData[key] === undefined || formattedData[key] === null) {
+        delete formattedData[key];
+      }
+    });
+
+    const response = await api.post('/api/sales/expenses/', formattedData);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to create expense');
+    // Provide more specific error messages
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error || 
+                        'Failed to create expense';
+    throw new Error(errorMessage);
   }
 };
 
@@ -679,6 +758,82 @@ export const getItems = async (params = {}) => {
   }
 };
 
+// Enhanced createSaleReturn function to replace the existing one in lib/api/sales.js
+
+export const createSaleReturn = async (returnData) => {
+  try {
+    console.log('Creating sale return with data:', returnData);
+    
+    // Validate required fields before sending
+    if (!returnData.original_invoice) {
+      throw new Error('Original invoice is required');
+    }
+    if (!returnData.customer) {
+      throw new Error('Customer is required');
+    }
+    if (!returnData.store) {
+      throw new Error('Store is required');
+    }
+    if (!returnData.lines || returnData.lines.length === 0) {
+      throw new Error('At least one return line is required');
+    }
+
+    // Ensure all numeric fields are properly formatted
+    const formattedData = {
+      ...returnData,
+      original_invoice: parseInt(returnData.original_invoice),
+      customer: parseInt(returnData.customer),
+      store: parseInt(returnData.store),
+      restocking_fee: returnData.restocking_fee ? parseFloat(returnData.restocking_fee) : 0.00,
+      lines: returnData.lines.map(line => ({
+        original_line: parseInt(line.original_line),
+        item: parseInt(line.item),
+        original_quantity: parseInt(line.original_quantity),
+        quantity_returned: parseInt(line.quantity_returned),
+        return_unit_price: parseFloat(line.return_unit_price),
+        condition: line.condition || 'good'
+      }))
+    };
+
+    console.log('Formatted data being sent:', formattedData);
+
+    const response = await api.post('/api/sales/sale-returns/', formattedData);
+    console.log('API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Create return error:', error);
+    console.error('Error response:', error.response?.data);
+    
+    // Enhanced error handling to show backend validation messages
+    const errorDetails = error.response?.data;
+    let message = 'Failed to create sale return';
+    
+    if (errorDetails) {
+      // Handle Django validation errors
+      if (errorDetails.error) {
+        message = errorDetails.error;
+      } else if (errorDetails.message) {
+        message = errorDetails.message;
+      } else if (typeof errorDetails === 'object') {
+        // Extract field-specific errors
+        const fieldErrors = Object.entries(errorDetails)
+          .map(([field, errors]) => {
+            const errorMsg = Array.isArray(errors) ? errors.join(', ') : errors;
+            return `${field}: ${errorMsg}`;
+          })
+          .join('; ');
+        message = fieldErrors || message;
+      }
+    } else if (error.message && !error.response) {
+      // Client-side validation error
+      message = error.message;
+    }
+    
+    throw new Error(message);
+  }
+};
+
+
 // Utility functions for common operations
 export const downloadPDF = (blobData, filename) => {
   const url = window.URL.createObjectURL(blobData);
@@ -729,6 +884,7 @@ export const RETURN_STATUS = {
   CANCELLED: 'cancelled'
 };
 
+
 // Expense category constants
 export const EXPENSE_CATEGORIES = {
   RENT: 'rent',
@@ -741,4 +897,50 @@ export const EXPENSE_CATEGORIES = {
   INSURANCE: 'insurance',
   TAXES: 'taxes',
   OTHER: 'other'
+};
+
+
+// Voiding operations
+export const voidSaleInvoice = async (invoiceId, voidData) => {
+  try {
+    const response = await api.post(`/api/sales/sale-invoices/${invoiceId}/void/`, voidData);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message || 'Failed to void invoice';
+    throw new Error(message);
+  }
+};
+
+export const voidCustomerPayment = async (paymentId, voidData) => {
+  try {
+    const response = await api.post(`/api/sales/customer-payments/${paymentId}/void/`, voidData);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message || 'Failed to void payment';
+    throw new Error(message);
+  }
+};
+
+export const voidSaleReturn = async (returnId, voidData) => {
+  try {
+    const response = await api.post(`/api/sales/sale-returns/${returnId}/void/`, voidData);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message || 'Failed to void return';
+    throw new Error(message);
+  }
+};
+
+// Check if transaction can be voided
+export const canVoidInvoice = async (invoiceId) => {
+  try {
+    const invoice = await getSaleInvoice(invoiceId);
+    return {
+      canVoid: invoice.status === 'completed' && !invoice.is_voided,
+      reason: invoice.is_voided ? 'Already voided' : 
+              invoice.status !== 'completed' ? 'Only completed invoices can be voided' : 'Can be voided'
+    };
+  } catch (error) {
+    return { canVoid: false, reason: 'Error checking invoice status' };
+  }
 };

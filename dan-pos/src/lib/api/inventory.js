@@ -134,14 +134,14 @@ export const getStockAlerts = async () => {
   }
 };
 
-export const getValuationReport = async () => {
-  try {
-    const response = await api.get('/api/inventory/inventory-reports/valuation/');
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to fetch valuation report');
-  }
-};
+// export const getValuationReport = async () => {
+//   try {
+//     const response = await api.get('/api/inventory/inventory-reports/valuation/');
+//     return response.data;
+//   } catch (error) {
+//     throw new Error(error.response?.data?.message || 'Failed to fetch valuation report');
+//   }
+// };
 
 // POS Integration operations
 export const posSearchItem = async (searchData) => {
@@ -204,9 +204,10 @@ export const recordTransfer = async (transferData) => {
     const response = await api.post('/api/inventory/inventory-integration/record_transfer/', transferData);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to record transfer');
+    throw new Error(error.response?.data?.message || 'Failed to record transfer kindly ensure quantities and other paramaters are checked before submitting');
   }
 };
+
 
 // Sales Type operations
 export const getSalesTypes = async (params = {}) => {
@@ -434,4 +435,215 @@ export const getMovementSummary = async (days = 30) => {
       count: 0
     };
   }
+};
+
+
+// for store allocation 
+
+export const assignStoresToUser = async (assignmentData) => {
+  try {
+    const response = await api.post('/api/inventory/store-assignments/assign_stores_to_user/', assignmentData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to assign stores to user');
+  }
+};
+
+export const removeStoresFromUser = async (assignmentData) => {
+  try {
+    const response = await api.post('/api/inventory/store-assignments/remove_stores_from_user/', assignmentData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to remove stores from user');
+  }
+};
+
+export const assignUsersToStore = async (storeId, assignmentData) => {
+  try {
+    const response = await api.post(`/api/inventory/stores/${storeId}/assign_users/`, assignmentData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to assign users to store');
+  }
+};
+
+export const removeUsersFromStore = async (storeId, assignmentData) => {
+  try {
+    const response = await api.post(`/api/inventory/stores/${storeId}/remove_users/`, assignmentData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to remove users from store');
+  }
+};
+
+export const getUserAssignedStores = async (userId) => {
+  try {
+    const response = await api.get(`/api/inventory/store-assignments/user_assigned_stores/?user_id=${userId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch user assigned stores');
+  }
+};
+
+export const getStoreAssignedUsers = async (storeId) => {
+  try {
+    const response = await api.get(`/api/inventory/stores/${storeId}/assigned_users/`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch store assigned users');
+  }
+};
+
+export const getCurrentUserStores = async () => {
+  try {
+    const response = await api.get('/api/inventory/stores/user_stores/');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch current user stores');
+  }
+};
+
+// export const getAllUsers = async () => {
+//   try {
+//     const response = await api.get('/api/core/users/');
+//     return response.data;
+//   } catch (error) {
+//     throw new Error(error.response?.data?.message || 'Failed to fetch users');
+//   }
+// };
+
+
+// Add this API function to your lib/api/inventory.js
+export const bulkStockTake = async (data) => {
+  try {
+    const response = await api.post('/api/inventory/bulk-stock-adjustments/bulk_stock_take/', data);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to update stock counts');
+  }
+};
+
+
+
+// Report data endpoints
+export const getStockLevelReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/stock_level_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch stock level report');
+  }
+};
+
+export const getMovementReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/movement_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch movement report');
+  }
+};
+
+export const getValuationReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/valuation_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch valuation report');
+  }
+};
+
+export const getLowStockReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/low_stock_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch low stock report');
+  }
+};
+
+// Excel export endpoints
+export const exportStockLevelExcel = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/export_stock_level_excel/', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to export stock level report');
+  }
+};
+
+export const exportMovementExcel = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/export_movement_excel/', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to export movement report');
+  }
+};
+
+export const exportValuationExcel = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/export_valuation_excel/', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to export valuation report');
+  }
+};
+
+export const exportLowStockExcel = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/export_low_stock_excel/', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to export low stock report');
+  }
+};
+
+// PDF export endpoints
+export const exportStockLevelPDF = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/export_stock_level_pdf/', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to export stock level PDF');
+  }
+};
+
+export const exportMovementPDF = async (params = {}) => {
+  try {
+    const response = await api.get('/api/inventory/inventory-reports/export_movement_pdf/', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to export movement PDF');
+  }
+};
+
+// Helper function to download blob
+export const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 };

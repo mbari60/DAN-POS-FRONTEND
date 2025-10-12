@@ -8,6 +8,12 @@ import { useRouter } from "next/navigation";
 import CustomerManagement from "./customers/page";
 import POSSidebar from "@/components/POSSidebar";
 import CreateSaleInvoice from "./invoices/page";
+import POSCreateSale from "./pos-sale/page";
+import POSSystem from "./pos-sale/page";
+import CustomerPaymentsManagement from "./payments/page";
+import ExpensesManagement from "./expenses/page";
+import CustomerBalancesManagement from "./balances/page";
+import ReturnsManagement from "./returns/page";
 
 
 const SalesSystem = () => {
@@ -28,22 +34,28 @@ const SalesSystem = () => {
   const renderActiveComponent = () => {
     switch (activeComponent) {
       case "pos":
-        return <CustomerManagement />;
+        return <POSSystem />;
       case "invoices":
         return <CreateSaleInvoice />;
       case "customers":
         return <CustomerManagement />;
-      case "receipts":
-        return <CustomerManagement />;
+      case "returns":
+        return <ReturnsManagement />;
+      case "payments":
+        return <CustomerPaymentsManagement />;
+      case "expenses":
+        return <ExpensesManagement />;
+      case "balances":
+        return <CustomerBalancesManagement />;
       default:
-        return <CustomerManagement />;
+        return <POSSystem />;
     }
   };
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
+        {/* <Navbar /> */}
 
         <div className="flex flex-1">
           <POSSidebar

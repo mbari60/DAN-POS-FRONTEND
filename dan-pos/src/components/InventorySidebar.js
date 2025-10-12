@@ -27,8 +27,10 @@ const InventorySidebar = ({ activeComponent, setActiveComponent }) => {
   const navigation = [
     { id: 'stores', name: 'Stores', icon: Home },
     { id: 'items', name: 'Inventory Items', icon: Package },
+    { id: 'transfers', name: 'Location Transfer', icon: Package },
     { id: 'movements', name: 'Stock Movements', icon: TrendingUp },
     { id: 'adjustments', name: 'Stock Adjustments', icon: Edit },
+    { id: 'stocktake', name: 'stocktake', icon: Edit },
     { id: 'pricing', name: 'pricing', icon: BarChart3 },
   ];
 

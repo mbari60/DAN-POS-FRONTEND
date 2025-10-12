@@ -1,5 +1,4 @@
 // lib/api/users.js
-// import { api } from './api';
 
 import { api } from "@/services/api";
 
@@ -38,3 +37,15 @@ export const deleteUser = async (id) => {
     throw new Error(error.response?.data?.message || 'Failed to delete user');
   }
 };
+
+export const resetUserPassword = async (userId) => {
+  try {
+    const response = await api.post('/users/reset-password/', {
+      user_id: userId
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to reset password');
+  }
+};
+

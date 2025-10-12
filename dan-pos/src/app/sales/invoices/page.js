@@ -8,6 +8,8 @@ import { toast } from 'react-toastify';
 
 // Import your actual API service
 import { api } from "@/services/api";
+// import { getStores } from '@/lib/api/possale';
+import { getCurrentUserStores } from '@/lib/api/inventory';
 
 // API functions for sale invoice operations
 const saleInvoiceAPI = {
@@ -16,10 +18,10 @@ const saleInvoiceAPI = {
     return response.data;
   },
   
-  getStores: async () => {
-    const response = await api.get('/api/inventory/stores/');
-    return response.data;
-  },
+  // getStores: async () => {
+  //   const response = await api.get('/api/inventory/stores/');
+  //   return response.data;
+  // },
   
   getSalesTypes: async () => {
     const response = await api.get('/api/inventory/sales-types/');
@@ -232,26 +234,27 @@ const CreateSaleInvoice = () => {
   }, []);
 
   // Load customers, stores, and sales types
-  const loadInitialData = async () => {
-    setLoading(true);
-    try {
-      const [customersResponse, storesResponse, salesTypesResponse] = await Promise.all([
-        saleInvoiceAPI.getCustomers(),
-        saleInvoiceAPI.getStores(),
-        saleInvoiceAPI.getSalesTypes()
-      ]);
+const loadInitialData = async () => {
+  setLoading(true);
+  try {
+    const [customersResponse, storesResponse, salesTypesResponse] = await Promise.all([
+      saleInvoiceAPI.getCustomers(),
+      getCurrentUserStores(),
+      saleInvoiceAPI.getSalesTypes()
+    ]);
 
-      setCustomers(customersResponse.results || customersResponse);
-      setStores(storesResponse.results || storesResponse);
-      setSalesTypes(salesTypesResponse.results || salesTypesResponse);
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-      toast.error('Failed to load initial data');
-      setErrors({ general: 'Failed to load initial data' });
-    } finally {
-      setLoading(false);
-    }
-  };
+    setCustomers(customersResponse.results || customersResponse);
+    // CORRECTION: Access the assigned_stores array
+    setStores(storesResponse.assigned_stores || []);
+    setSalesTypes(salesTypesResponse.results || salesTypesResponse);
+  } catch (error) {
+    console.error('Error loading initial data:', error);
+    toast.error('Failed to load initial data');
+    setErrors({ general: 'Failed to load initial data' });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Load items when sales type and store are selected
   const loadItemsForSalesType = useCallback(async () => {

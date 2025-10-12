@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, Edit, Trash2, Filter, Users, Mail, User, AlertCircle } from 'lucide-react';
-import { getUsers, createUser, updateUser, deleteUser } from '@/lib/api/users';
+import { Plus, Search, Edit, Trash2, Filter, Users, Mail, User, AlertCircle, Key, Copy, ShieldAlert } from 'lucide-react';
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '@/lib/api/users';
 import { getRoles } from '@/lib/api/roles';
 
 export default function UserManagement() {
@@ -24,7 +24,9 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState(null);
 
   // Form state for create/edit
   const [formData, setFormData] = useState({
@@ -199,6 +201,47 @@ export default function UserManagement() {
       console.error('Error deleting user:', error);
       toast.error(`Error deleting user: ${error.message}`);
     }
+  };
+
+  // Add the reset password function
+  const handleResetPassword = async (user) => {
+    setSelectedUser(user);
+    setIsResetPasswordDialogOpen(true);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setSubmitting(true);
+      const result = await resetUserPassword(selectedUser.id);
+      
+      setResetPasswordResult(result);
+      toast.success('Password reset successfully');
+      
+      // Close the confirmation dialog but keep the result dialog open
+      setIsResetPasswordDialogOpen(false);
+      
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast.error(`Error resetting password: ${error.message}`);
+      setIsResetPasswordDialogOpen(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('Password copied to clipboard');
+    }).catch(() => {
+      toast.error('Failed to copy to clipboard');
+    });
+  };
+
+  const closeResetPasswordResult = () => {
+    setResetPasswordResult(null);
+    setSelectedUser(null);
   };
 
   const openEditDialog = (user) => {
@@ -575,6 +618,15 @@ export default function UserManagement() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
+                            onClick={() => handleResetPassword(user)}
+                            className="text-blue-500 hover:text-blue-700"
+                            title="Reset Password"
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
                             onClick={() => handleDeleteUser(user.id, getUserDisplayName(user))}
                             className="text-red-500 hover:text-red-700"
                           >
@@ -658,14 +710,24 @@ export default function UserManagement() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)} title="Edit User">
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleResetPassword(user)}
+                            className="text-blue-500 hover:text-blue-700"
+                            title="Reset Password"
+                          >
+                            <Key className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleDeleteUser(user.id, getUserDisplayName(user))}
                             className="text-red-500 hover:text-red-700"
+                            title="Delete User"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -808,7 +870,116 @@ export default function UserManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Reset Password Confirmation Dialog */}
+      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-yellow-500" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reset the password for <strong>{selectedUser?.username}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-medium">This action will:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Generate a new temporary password</li>
+                  <li>Log the user out from all devices</li>
+                  <li>Require the user to change their password on next login</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsResetPasswordDialogOpen(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmResetPassword}
+              disabled={submitting}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {submitting ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Resetting...
+                </div>
+              ) : (
+                'Reset Password'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Result Dialog */}
+      <Dialog open={!!resetPasswordResult} onOpenChange={closeResetPasswordResult}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Key className="h-5 w-5" />
+              Password Reset Successful
+            </DialogTitle>
+            <DialogDescription>
+              The password has been reset for <strong>{resetPasswordResult?.username}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-md p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-green-800">Temporary Password:</p>
+                  <p className="text-2xl font-mono font-bold text-green-900 mt-1">
+                    {resetPasswordResult?.temporary_password}
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => copyToClipboard(resetPasswordResult?.temporary_password)}
+                  className="text-green-700 border-green-300"
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <p><strong>Important:</strong> Provide this temporary password to the user immediately.</p>
+                  <p className="mt-1">The user has been logged out from all devices and will need this password to login.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-sm text-muted-foreground">
+              <p><strong>User:</strong> {resetPasswordResult?.username}</p>
+              <p><strong>Email:</strong> {resetPasswordResult?.email}</p>
+              <p><strong>User ID:</strong> {resetPasswordResult?.user_id}</p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={closeResetPasswordResult}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

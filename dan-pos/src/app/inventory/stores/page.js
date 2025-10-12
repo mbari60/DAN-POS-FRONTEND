@@ -1,8 +1,13 @@
-// components/StoreManagement.jsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,11 +50,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Store, 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  Store,
+  Plus,
+  Edit,
+  Trash2,
   Search,
   RefreshCw,
   MapPin,
@@ -63,8 +68,11 @@ import {
   ChevronRight,
   DollarSign,
   Building,
-  Warehouse
-} from 'lucide-react';
+  Warehouse,
+  Users,
+  UserPlus,
+  UserMinus,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,72 +81,116 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from 'react-toastify';
-import { 
+import { toast } from "react-toastify";
+import {
   getStores,
   createStore,
   updateStore,
   deleteStore,
   getStock,
-  getStoreInventory
-} from '@/lib/api/inventory';
+  getStoreInventory,
+  getStoreAssignedUsers,
+  assignUsersToStore,
+  removeUsersFromStore,
+} from "@/lib/api/inventory";
+import { getUsers } from "@/lib/api/users";
 
 export default function StoreManagement() {
   // State management
-  const [activeTab, setActiveTab] = useState('stores');
+  const [activeTab, setActiveTab] = useState("stores");
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState([]);
   const [stock, setStock] = useState([]);
   const [storeInventory, setStoreInventory] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStore, setSelectedStore] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStore, setSelectedStore] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+
+  // New state for user management
+  const [users, setUsers] = useState([]);
+  const [storeUsers, setStoreUsers] = useState([]);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [storesPerPage] = useState(6);
   const [inventoryPerPage] = useState(8);
-  
+
   // Dialog states
-  const [storeDialog, setStoreDialog] = useState({ open: false, mode: 'create', store: null });
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, type: '', store: null });
+  const [storeDialog, setStoreDialog] = useState({
+    open: false,
+    mode: "create",
+    store: null,
+  });
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    type: "",
+    store: null,
+  });
   const [viewDialog, setViewDialog] = useState({ open: false, store: null });
+  const [userManagementDialog, setUserManagementDialog] = useState({
+    open: false,
+    store: null,
+    mode: "view",
+  });
+  const [assignUsersDialog, setAssignUsersDialog] = useState({
+    open: false,
+    store: null,
+  });
 
   // Form states
   const [storeForm, setStoreForm] = useState({
-    name: '',
-    location: '',
-    is_active: true
+    name: "",
+    location: "",
+    is_active: true,
   });
+
+  // User assignment state
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [storesData, stockData] = await Promise.all([
+      const [storesData, stockData, usersData] = await Promise.all([
         getStores(),
-        getStock()
+        getStock(),
+        getUsers(),
       ]);
-      
+
       setStores(storesData.data || []);
       setStock(stockData.data || []);
+      setUsers(usersData.results || []);
     } catch (error) {
-      toast.error(error.message || 'Failed to load data');
+      toast.error(error.message || "Failed to load data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load store users when store is selected for user management
+  const loadStoreUsers = async (storeId) => {
+    try {
+      if (storeId) {
+        const usersData = await getStoreAssignedUsers(storeId);
+        console.log("store is assigned to", usersData);
+        // Fix: Use assigned_users instead of results
+        setStoreUsers(usersData.assigned_users || []);
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to load store users");
     }
   };
 
   // Load store inventory when store is selected
   const loadStoreInventory = async (storeId) => {
     try {
-      if (storeId && storeId !== 'all') {
+      if (storeId && storeId !== "all") {
         const inventoryData = await getStoreInventory(storeId);
         setStoreInventory(inventoryData.results || []);
       } else {
         setStoreInventory([]);
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to load store inventory');
+      toast.error(error.message || "Failed to load store inventory");
     }
   };
 
@@ -153,50 +205,104 @@ export default function StoreManagement() {
   // Store CRUD operations
   const handleStoreSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
-      if (storeDialog.mode === 'create') {
+      if (storeDialog.mode === "create") {
         await createStore(storeForm);
-        toast.success('Store created successfully');
+        toast.success("Store created successfully");
       } else {
         await updateStore(storeDialog.store.id, storeForm);
-        toast.success('Store updated successfully');
+        toast.success("Store updated successfully");
       }
-      
-      setStoreDialog({ open: false, mode: 'create', store: null });
+
+      setStoreDialog({ open: false, mode: "create", store: null });
       resetStoreForm();
       loadData();
     } catch (error) {
-      toast.error(error.message || 'Failed to save store');
+      toast.error(error.message || "Failed to save store");
     }
   };
 
   const handleStoreDelete = async () => {
     try {
       await deleteStore(deleteDialog.store.id);
-      toast.success('Store deleted successfully');
-      setDeleteDialog({ open: false, type: '', store: null });
+      toast.success("Store deleted successfully");
+      setDeleteDialog({ open: false, type: "", store: null });
       loadData();
     } catch (error) {
-      toast.error(error.message || 'Failed to delete store');
+      toast.error(error.message || "Failed to delete store");
     }
+  };
+
+  // User Management Operations - IMPROVED
+  const handleAssignUsers = async () => {
+    try {
+      if (selectedUserIds.length === 0) {
+        toast.error("Please select at least one user");
+        return;
+      }
+
+      console.log("sending user IDs:", selectedUserIds);
+      console.log("to store ID:", assignUsersDialog.store.id);
+
+      // Use the correct format
+      await assignUsersToStore(assignUsersDialog.store.id, {
+        store_id: assignUsersDialog.store.id,
+        user_ids: selectedUserIds,
+      });
+
+      toast.success(`Assigned ${selectedUserIds.length} users to store`);
+      setAssignUsersDialog({ open: false, store: null });
+      setSelectedUserIds([]);
+
+      // Reload store users if user management dialog is open
+      if (
+        userManagementDialog.open &&
+        userManagementDialog.store?.id === assignUsersDialog.store?.id
+      ) {
+        await loadStoreUsers(assignUsersDialog.store.id);
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to assign users to store");
+    }
+  };
+
+  const handleRemoveUsers = async (userIds) => {
+    try {
+      await removeUsersFromStore(userManagementDialog.store.id, {
+        store_id: userManagementDialog.store.id,
+        user_ids: userIds,
+      });
+
+      toast.success(`Removed ${userIds.length} users from store`);
+      // Reload store users
+      await loadStoreUsers(userManagementDialog.store.id);
+    } catch (error) {
+      toast.error(error.message || "Failed to remove users from store");
+    }
+  };
+
+  // NEW: Direct assignment function
+  const handleDirectAssign = async (store) => {
+    setAssignUsersDialog({ open: true, store });
+    setSelectedUserIds([]);
   };
 
   // Helper functions
   const resetStoreForm = () => {
     setStoreForm({
-      name: '',
-      location: '',
-      is_active: true
+      name: "",
+      location: "",
+      is_active: true,
     });
   };
 
   const openStoreDialog = (mode, store = null) => {
-    if (mode === 'edit' && store) {
+    if (mode === "edit" && store) {
       setStoreForm({
         name: store.name,
         location: store.location,
-        is_active: store.is_active
+        is_active: store.is_active,
       });
     } else {
       resetStoreForm();
@@ -204,36 +310,67 @@ export default function StoreManagement() {
     setStoreDialog({ open: true, mode, store });
   };
 
+  const openUserManagementDialog = async (store, mode = "view") => {
+    setUserManagementDialog({ open: true, store, mode });
+    if (store) {
+      await loadStoreUsers(store.id);
+    }
+  };
+
   // Filter stores
-  const filteredStores = stores.filter(store => {
-    const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         store.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || 
-                         (filterStatus === 'active' && store.is_active) ||
-                         (filterStatus === 'inactive' && !store.is_active);
+  const filteredStores = stores.filter((store) => {
+    const matchesSearch =
+      store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      store.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "active" && store.is_active) ||
+      (filterStatus === "inactive" && !store.is_active);
     return matchesSearch && matchesStatus;
   });
 
   // Get stock for selected store
-  const filteredStock = selectedStore === 'all' 
-    ? stock 
-    : stock.filter(item => item.store.toString() === selectedStore);
+  const filteredStock =
+    selectedStore === "all"
+      ? stock
+      : stock.filter((item) => item.store.toString() === selectedStore);
+
+  // Get users not assigned to the current store
+  const getAvailableUsers = () => {
+    if (!assignUsersDialog.store) return users;
+    const assignedUserIds = new Set(storeUsers.map((user) => user.id));
+    return users.filter((user) => !assignedUserIds.has(user.id));
+  };
 
   // Pagination functions for stores
   const indexOfLastStore = currentPage * storesPerPage;
   const indexOfFirstStore = indexOfLastStore - storesPerPage;
-  const currentStores = filteredStores.slice(indexOfFirstStore, indexOfLastStore);
+  const currentStores = filteredStores.slice(
+    indexOfFirstStore,
+    indexOfLastStore
+  );
   const totalStorePages = Math.ceil(filteredStores.length / storesPerPage);
 
   // Pagination functions for inventory
   const indexOfLastInventory = currentPage * inventoryPerPage;
   const indexOfFirstInventory = indexOfLastInventory - inventoryPerPage;
-  const currentInventory = filteredStock.slice(indexOfFirstInventory, indexOfLastInventory);
-  const totalInventoryPages = Math.ceil(filteredStock.length / inventoryPerPage);
+  const currentInventory = filteredStock.slice(
+    indexOfFirstInventory,
+    indexOfLastInventory
+  );
+  const totalInventoryPages = Math.ceil(
+    filteredStock.length / inventoryPerPage
+  );
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  const PaginationControls = ({ totalItems, itemsPerPage, currentPage, onPageChange, type = 'stores' }) => {
+  const PaginationControls = ({
+    totalItems,
+    itemsPerPage,
+    currentPage,
+    onPageChange,
+    type = "stores",
+  }) => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     const showingFrom = (currentPage - 1) * itemsPerPage + 1;
     const showingTo = Math.min(currentPage * itemsPerPage, totalItems);
@@ -254,7 +391,7 @@ export default function StoreManagement() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          
+
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             let pageNumber;
             if (totalPages <= 5) {
@@ -279,7 +416,7 @@ export default function StoreManagement() {
               </Button>
             );
           })}
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -300,8 +437,11 @@ export default function StoreManagement() {
 
   // Statistics calculations
   const totalStoresCount = stores.length;
-  const activeStoresCount = stores.filter(store => store.is_active).length;
-  const totalInventoryValue = stores.reduce((sum, store) => sum + (store.total_stock_value || 0), 0);
+  const activeStoresCount = stores.filter((store) => store.is_active).length;
+  const totalInventoryValue = stores.reduce(
+    (sum, store) => sum + (store.total_stock_value || 0),
+    0
+  );
 
   if (loading) {
     return (
@@ -324,7 +464,9 @@ export default function StoreManagement() {
       {/* Header with Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Store Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Store Management
+          </h1>
           <p className="text-sm text-muted-foreground">
             Manage your stores and inventory distribution
           </p>
@@ -341,8 +483,12 @@ export default function StoreManagement() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-900">Total Stores</p>
-                <p className="text-2xl font-bold text-blue-700">{totalStoresCount}</p>
+                <p className="text-sm font-medium text-blue-900">
+                  Total Stores
+                </p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {totalStoresCount}
+                </p>
               </div>
               <Building className="h-8 w-8 text-blue-600" />
             </div>
@@ -353,8 +499,12 @@ export default function StoreManagement() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-900">Active Stores</p>
-                <p className="text-2xl font-bold text-green-700">{activeStoresCount}</p>
+                <p className="text-sm font-medium text-green-900">
+                  Active Stores
+                </p>
+                <p className="text-2xl font-bold text-green-700">
+                  {activeStoresCount}
+                </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -365,12 +515,14 @@ export default function StoreManagement() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-900">Total Inventory Value</p>
+                <p className="text-sm font-medium text-purple-900">
+                  Total Inventory Value
+                </p>
                 <p className="text-2xl font-bold text-purple-700">
                   Ksh {totalInventoryValue.toLocaleString()}
                 </p>
               </div>
-              
+              <DollarSign className="h-8 w-8 text-purple-600" />
             </div>
           </CardContent>
         </Card>
@@ -379,11 +531,17 @@ export default function StoreManagement() {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2 lg:w-[300px]">
-          <TabsTrigger value="stores" className="flex items-center gap-2 text-xs">
+          <TabsTrigger
+            value="stores"
+            className="flex items-center gap-2 text-xs"
+          >
             <Store className="h-3 w-3" />
             Stores ({stores.length})
           </TabsTrigger>
-          <TabsTrigger value="inventory" className="flex items-center gap-2 text-xs">
+          <TabsTrigger
+            value="inventory"
+            className="flex items-center gap-2 text-xs"
+          >
             <Package className="h-3 w-3" />
             Inventory
           </TabsTrigger>
@@ -400,10 +558,7 @@ export default function StoreManagement() {
                     Manage your store locations
                   </CardDescription>
                 </div>
-                <Button 
-                  onClick={() => openStoreDialog('create')}
-                  size="sm"
-                >
+                <Button onClick={() => openStoreDialog("create")} size="sm">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Store
                 </Button>
@@ -439,14 +594,19 @@ export default function StoreManagement() {
                   {currentStores.length === 0 ? (
                     <div className="col-span-full text-center py-6">
                       <Store className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">No stores found</p>
+                      <p className="text-sm text-muted-foreground">
+                        No stores found
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Try adjusting your search or filters
                       </p>
                     </div>
                   ) : (
                     currentStores.map((store) => (
-                      <Card key={store.id} className="hover:shadow-sm transition-shadow group">
+                      <Card
+                        key={store.id}
+                        className="hover:shadow-sm transition-shadow group"
+                      >
                         <CardHeader className="pb-2">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
@@ -455,27 +615,58 @@ export default function StoreManagement() {
                               </CardTitle>
                               <CardDescription className="text-xs mt-1 flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                <span className="truncate">{store.location}</span>
+                                <span className="truncate">
+                                  {store.location}
+                                </span>
                               </CardDescription>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-7 w-7 p-0 flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 flex-shrink-0"
+                                >
                                   <MoreHorizontal className="h-3 w-3" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setViewDialog({ open: true, store })}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setViewDialog({ open: true, store })
+                                  }
+                                >
                                   <Eye className="mr-2 h-3 w-3" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openStoreDialog('edit', store)}>
+                                <DropdownMenuItem
+                                  onClick={() => handleDirectAssign(store)}
+                                >
+                                  <UserPlus className="mr-2 h-3 w-3" />
+                                  Assign Users
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    openUserManagementDialog(store, "view")
+                                  }
+                                >
+                                  <Users className="mr-2 h-3 w-3" />
+                                  Manage Users
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openStoreDialog("edit", store)}
+                                >
                                   <Edit className="mr-2 h-3 w-3" />
                                   Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => setDeleteDialog({ open: true, type: 'store', store })}
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setDeleteDialog({
+                                      open: true,
+                                      type: "store",
+                                      store,
+                                    })
+                                  }
                                   className="text-destructive"
                                 >
                                   <Trash2 className="mr-2 h-3 w-3" />
@@ -487,12 +678,21 @@ export default function StoreManagement() {
                         </CardHeader>
                         <CardContent className="pt-0">
                           <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-xs">
-                              {store.total_items} item{store.total_items !== 1 ? 's' : ''}
-                            </Badge>
                             <div className="flex items-center gap-2">
-                              <Badge 
-                                variant={store.is_active ? "default" : "secondary"} 
+                              <Badge variant="outline" className="text-xs">
+                                {store.total_items} item
+                                {store.total_items !== 1 ? "s" : ""}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {store.users?.length || 0} user
+                                {store.users?.length !== 1 ? "s" : ""}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant={
+                                  store.is_active ? "default" : "secondary"
+                                }
                                 className="text-xs flex items-center gap-1"
                               >
                                 {store.is_active ? (
@@ -504,7 +704,8 @@ export default function StoreManagement() {
                               </Badge>
                               <Badge variant="secondary" className="text-xs">
                                 Ksh.
-                                {store.total_stock_value?.toLocaleString() || '0'}
+                                {store.total_stock_value?.toLocaleString() ||
+                                  "0"}
                               </Badge>
                             </div>
                           </div>
@@ -514,7 +715,7 @@ export default function StoreManagement() {
                   )}
                 </div>
               </div>
-              
+
               <PaginationControls
                 totalItems={filteredStores.length}
                 itemsPerPage={storesPerPage}
@@ -566,9 +767,15 @@ export default function StoreManagement() {
                       <TableRow className="bg-muted/50">
                         <TableHead className="font-semibold">Item</TableHead>
                         <TableHead className="font-semibold">SKU</TableHead>
-                        <TableHead className="font-semibold hidden sm:table-cell">Store</TableHead>
-                        <TableHead className="font-semibold">Quantity</TableHead>
-                        <TableHead className="font-semibold hidden md:table-cell">Last Updated</TableHead>
+                        <TableHead className="font-semibold hidden sm:table-cell">
+                          Store
+                        </TableHead>
+                        <TableHead className="font-semibold">
+                          Quantity
+                        </TableHead>
+                        <TableHead className="font-semibold hidden md:table-cell">
+                          Last Updated
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -578,19 +785,23 @@ export default function StoreManagement() {
                             <div className="flex flex-col items-center gap-2">
                               <Package className="h-6 w-6 text-muted-foreground" />
                               <p className="text-sm text-muted-foreground">
-                                {selectedStore === 'all' 
-                                  ? 'No stock records found' 
-                                  : 'No inventory found for this store'
-                                }
+                                {selectedStore === "all"
+                                  ? "No stock records found"
+                                  : "No inventory found for this store"}
                               </p>
                             </div>
                           </TableCell>
                         </TableRow>
                       ) : (
                         currentInventory.map((stockItem) => (
-                          <TableRow key={stockItem.id} className="hover:bg-muted/30">
+                          <TableRow
+                            key={stockItem.id}
+                            className="hover:bg-muted/30"
+                          >
                             <TableCell>
-                              <div className="font-medium text-sm">{stockItem.item_name}</div>
+                              <div className="font-medium text-sm">
+                                {stockItem.item_name}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
@@ -604,7 +815,9 @@ export default function StoreManagement() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <span className="font-medium text-sm">{stockItem.quantity}</span>
+                                <span className="font-medium text-sm">
+                                  {stockItem.quantity}
+                                </span>
                                 {stockItem.quantity === 0 && (
                                   <AlertCircle className="h-3 w-3 text-destructive" />
                                 )}
@@ -612,7 +825,9 @@ export default function StoreManagement() {
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                               <span className="text-xs text-muted-foreground">
-                                {new Date(stockItem.last_updated).toLocaleDateString()}
+                                {new Date(
+                                  stockItem.last_updated
+                                ).toLocaleDateString()}
                               </span>
                             </TableCell>
                           </TableRow>
@@ -631,7 +846,7 @@ export default function StoreManagement() {
               </div>
 
               {/* Store-specific inventory details */}
-              {selectedStore !== 'all' && storeInventory.length > 0 && (
+              {selectedStore !== "all" && storeInventory.length > 0 && (
                 <div className="p-4">
                   <Card>
                     <CardHeader className="pb-3">
@@ -643,26 +858,47 @@ export default function StoreManagement() {
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-600">{storeInventory.length}</div>
-                          <div className="text-xs text-muted-foreground">Total Items</div>
+                          <div className="text-2xl font-bold text-blue-600">
+                            {storeInventory.length}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Total Items
+                          </div>
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold text-green-600">
-                            {storeInventory.reduce((sum, item) => sum + item.quantity, 0)}
+                            {storeInventory.reduce(
+                              (sum, item) => sum + item.quantity,
+                              0
+                            )}
                           </div>
-                          <div className="text-xs text-muted-foreground">Total Quantity</div>
+                          <div className="text-xs text-muted-foreground">
+                            Total Quantity
+                          </div>
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold text-orange-600">
-                            {storeInventory.filter(item => item.quantity === 0).length}
+                            {
+                              storeInventory.filter(
+                                (item) => item.quantity === 0
+                              ).length
+                            }
                           </div>
-                          <div className="text-xs text-muted-foreground">Out of Stock</div>
+                          <div className="text-xs text-muted-foreground">
+                            Out of Stock
+                          </div>
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold text-purple-600">
-                            {storeInventory.filter(item => item.quantity <= 5).length}
+                            {
+                              storeInventory.filter(
+                                (item) => item.quantity <= 5
+                              ).length
+                            }
                           </div>
-                          <div className="text-xs text-muted-foreground">Low Stock</div>
+                          <div className="text-xs text-muted-foreground">
+                            Low Stock
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -675,27 +911,33 @@ export default function StoreManagement() {
       </Tabs>
 
       {/* Store Dialog */}
-      <Dialog open={storeDialog.open} onOpenChange={(open) => setStoreDialog({ ...storeDialog, open })}>
+      <Dialog
+        open={storeDialog.open}
+        onOpenChange={(open) => setStoreDialog({ ...storeDialog, open })}
+      >
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle className="text-lg">
-              {storeDialog.mode === 'create' ? 'Add New Store' : 'Edit Store'}
+              {storeDialog.mode === "create" ? "Add New Store" : "Edit Store"}
             </DialogTitle>
             <DialogDescription className="text-sm">
-              {storeDialog.mode === 'create' 
-                ? 'Create a new store location' 
-                : 'Update store information'
-              }
+              {storeDialog.mode === "create"
+                ? "Create a new store location"
+                : "Update store information"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleStoreSubmit}>
             <div className="grid gap-3 py-4">
               <div className="space-y-2">
-                <Label htmlFor="store_name" className="text-sm">Store Name *</Label>
+                <Label htmlFor="store_name" className="text-sm">
+                  Store Name *
+                </Label>
                 <Input
                   id="store_name"
                   value={storeForm.name}
-                  onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })}
+                  onChange={(e) =>
+                    setStoreForm({ ...storeForm, name: e.target.value })
+                  }
                   placeholder="Enter store name"
                   className="h-9"
                   required
@@ -703,11 +945,15 @@ export default function StoreManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm">Location *</Label>
+                <Label htmlFor="location" className="text-sm">
+                  Location *
+                </Label>
                 <Textarea
                   id="location"
                   value={storeForm.location}
-                  onChange={(e) => setStoreForm({ ...storeForm, location: e.target.value })}
+                  onChange={(e) =>
+                    setStoreForm({ ...storeForm, location: e.target.value })
+                  }
                   placeholder="Enter store location address"
                   className="min-h-[60px]"
                   required
@@ -718,21 +964,29 @@ export default function StoreManagement() {
                 <Switch
                   id="is_active"
                   checked={storeForm.is_active}
-                  onCheckedChange={(checked) => setStoreForm({ ...storeForm, is_active: checked })}
+                  onCheckedChange={(checked) =>
+                    setStoreForm({ ...storeForm, is_active: checked })
+                  }
                 />
-                <Label htmlFor="is_active" className="text-sm">Active Store</Label>
+                <Label htmlFor="is_active" className="text-sm">
+                  Active Store
+                </Label>
               </div>
             </div>
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setStoreDialog({ open: false, mode: 'create', store: null })}
+                onClick={() =>
+                  setStoreDialog({ open: false, mode: "create", store: null })
+                }
               >
                 Cancel
               </Button>
               <Button type="submit">
-                {storeDialog.mode === 'create' ? 'Create Store' : 'Update Store'}
+                {storeDialog.mode === "create"
+                  ? "Create Store"
+                  : "Update Store"}
               </Button>
             </DialogFooter>
           </form>
@@ -740,7 +994,10 @@ export default function StoreManagement() {
       </Dialog>
 
       {/* View Store Dialog */}
-      <Dialog open={viewDialog.open} onOpenChange={(open) => setViewDialog({ ...viewDialog, open })}>
+      <Dialog
+        open={viewDialog.open}
+        onOpenChange={(open) => setViewDialog({ ...viewDialog, open })}
+      >
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg">Store Details</DialogTitle>
@@ -752,19 +1009,32 @@ export default function StoreManagement() {
             <div className="grid gap-3 py-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Name</Label>
-                  <p className="text-sm font-semibold">{viewDialog.store.name}</p>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Name
+                  </Label>
+                  <p className="text-sm font-semibold">
+                    {viewDialog.store.name}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Status</Label>
-                  <Badge variant={viewDialog.store.is_active ? "default" : "secondary"} className="text-xs">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Status
+                  </Label>
+                  <Badge
+                    variant={
+                      viewDialog.store.is_active ? "default" : "secondary"
+                    }
+                    className="text-xs"
+                  >
                     {viewDialog.store.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               </div>
 
               <div>
-                <Label className="text-xs font-medium text-muted-foreground">Location</Label>
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Location
+                </Label>
                 <p className="text-sm flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
                   {viewDialog.store.location}
@@ -773,50 +1043,102 @@ export default function StoreManagement() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Total Items</Label>
-                  <p className="text-sm font-semibold">{viewDialog.store.total_items}</p>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Total Items
+                  </Label>
+                  <p className="text-sm font-semibold">
+                    {viewDialog.store.total_items}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Total Value</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Assigned Users
+                  </Label>
                   <p className="text-sm font-semibold">
-                    Ksh {viewDialog.store.total_stock_value?.toLocaleString() || '0'}
+                    {viewDialog.store.users?.length || 0}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Created At</Label>
-                  <p className="text-xs">{new Date(viewDialog.store.created_at).toLocaleDateString()}</p>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Total Value
+                  </Label>
+                  <p className="text-sm font-semibold">
+                    Ksh{" "}
+                    {viewDialog.store.total_stock_value?.toLocaleString() ||
+                      "0"}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Last Updated</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Created At
+                  </Label>
                   <p className="text-xs">
-                    {viewDialog.store.updated_at 
-                      ? new Date(viewDialog.store.updated_at).toLocaleDateString()
-                      : 'N/A'
-                    }
+                    {new Date(viewDialog.store.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
 
+              {/* Assigned Users Section */}
+              {viewDialog.store.users && viewDialog.store.users.length > 0 && (
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Assigned Users
+                  </Label>
+                  <div className="grid gap-2 mt-1 max-h-32 overflow-y-auto">
+                    {viewDialog.store.users.map((userId) => {
+                      const user = users.find((u) => u.id === userId);
+                      return user ? (
+                        <div
+                          key={userId}
+                          className="flex justify-between items-center bg-muted p-2 rounded"
+                        >
+                          <span className="text-xs truncate flex-1">
+                            {user.full_name || user.username}
+                          </span>
+                          <Badge variant="outline" className="text-xs ml-2">
+                            {user.role_info?.name || "No role"}
+                          </Badge>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Store Inventory Summary */}
               {storeInventory.length > 0 && (
                 <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Current Inventory</Label>
-                  <div className="grid gap-2 mt-1 max-h-40 overflow-y-auto">
-                    {storeInventory.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center bg-muted p-2 rounded">
-                        <span className="text-xs truncate flex-1">{item.item_name}</span>
-                        <Badge variant="outline" className="text-xs ml-2">{item.quantity} units</Badge>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Current Inventory
+                  </Label>
+                  <div className="grid gap-2 mt-1 max-h-32 overflow-y-auto">
+                    {storeInventory.slice(0, 5).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex justify-between items-center bg-muted p-2 rounded"
+                      >
+                        <span className="text-xs truncate flex-1">
+                          {item.item_name}
+                        </span>
+                        <Badge variant="outline" className="text-xs ml-2">
+                          {item.quantity} units
+                        </Badge>
                       </div>
                     ))}
+                    {storeInventory.length > 5 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        +{storeInventory.length - 5} more items
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
             <Button
               variant="outline"
               onClick={() => setViewDialog({ open: false, store: null })}
@@ -824,9 +1146,16 @@ export default function StoreManagement() {
               Close
             </Button>
             <Button
+              onClick={() => handleDirectAssign(viewDialog.store)}
+              variant="secondary"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Assign Users
+            </Button>
+            <Button
               onClick={() => {
                 setViewDialog({ open: false, store: null });
-                openStoreDialog('edit', viewDialog.store);
+                openStoreDialog("edit", viewDialog.store);
               }}
             >
               <Edit className="mr-2 h-4 w-4" />
@@ -836,18 +1165,203 @@ export default function StoreManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* NEW: Separate Assign Users Dialog */}
+      <Dialog
+        open={assignUsersDialog.open}
+        onOpenChange={(open) =>
+          setAssignUsersDialog({ ...assignUsersDialog, open })
+        }
+      >
+        <DialogContent className="sm:max-w-[550px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Assign Users to Store
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Select users to assign to {assignUsersDialog.store?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {assignUsersDialog.store && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium mb-3 block">
+                  Available Users ({getAvailableUsers().length})
+                </Label>
+
+                {getAvailableUsers().length === 0 ? (
+                  <div className="text-center py-4 border rounded-md">
+                    <CheckCircle className="h-8 w-8 mx-auto text-green-500 mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      All users are already assigned to this store
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-2">
+                    {getAvailableUsers().map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center space-x-3 p-2 hover:bg-muted rounded-md"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedUserIds.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUserIds([...selectedUserIds, user.id]);
+                            } else {
+                              setSelectedUserIds(
+                                selectedUserIds.filter((id) => id !== user.id)
+                              );
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {user.full_name || user.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.email} • {user.role_info?.name || "No role"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setAssignUsersDialog({ open: false, store: null })
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAssignUsers}
+                  disabled={selectedUserIds.length === 0}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Assign {selectedUserIds.length} User
+                  {selectedUserIds.length !== 1 ? "s" : ""}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* User Management Dialog (View/Remove Users) */}
+      <Dialog
+        open={userManagementDialog.open}
+        onOpenChange={(open) =>
+          setUserManagementDialog({ ...userManagementDialog, open })
+        }
+      >
+        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Store Users Management
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Manage users for {userManagementDialog.store?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {userManagementDialog.store && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">
+                  Assigned Users ({storeUsers.length})
+                </Label>
+                <Button
+                  size="sm"
+                  onClick={() => handleDirectAssign(userManagementDialog.store)}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Assign More Users
+                </Button>
+              </div>
+
+              {storeUsers.length === 0 ? (
+                <div className="text-center py-4 border rounded-md">
+                  <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No users assigned to this store
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() =>
+                      handleDirectAssign(userManagementDialog.store)
+                    }
+                  >
+                    Assign Users
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {storeUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-1 min-w-0">
+                          {/* Use the correct property names from your API response */}
+                          <p className="text-sm font-medium truncate">
+                            {user.first_name && user.last_name
+                              ? `${user.first_name} ${user.last_name}`
+                              : user.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.email}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {user.role_info?.name || "No role"}
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRemoveUsers([user.id])}
+                        className="text-destructive hover:text-destructive ml-2"
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+      <AlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the{' '}
-              <strong>store</strong>{' '}
+              This action cannot be undone. This will permanently delete the{" "}
+              <strong>store</strong>{" "}
               <strong>"{deleteDialog.store?.name}"</strong>
               {deleteDialog.store?.total_items > 0 && (
                 <span className="text-destructive">
-                  {' '}and will affect {deleteDialog.store.total_items} item(s) in this store.
+                  {" "}
+                  and will affect {deleteDialog.store.total_items} item(s) in
+                  this store.
                 </span>
               )}
             </AlertDialogDescription>

@@ -27,8 +27,11 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
     { id: "pos", name: "POS Sale", icon: ShoppingCart },
     { id: "invoices", name: "Sales Invoicing", icon: FileText },
     { id: "customers", name: "Add Customers", icon: UserPlus },
-    { id: "receipts", name: "Receipts", icon: Receipt },
-    { id: "customer_balances", name: "Customer Balances", icon: Receipt },
+    { id: "returns", name: "returns", icon: FileText },
+    { id: "payments", name: "payments", icon: Receipt },
+    { id: "balances", name: "Customer Balances", icon: Receipt },
+    { id: "expenses", name: "Expenses", icon: Receipt },
+    
   ];
 
   // Fetch user profile data

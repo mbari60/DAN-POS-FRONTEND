@@ -80,3 +80,12 @@ export const getPermission = async (permissionId) => {
     throw new Error(error.response?.data?.message || 'Failed to fetch permission');
   }
 };
+
+export const getUserPermissions = async () => {
+  try {
+    const response = await api.get('/user/permissions/');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch user permissions');
+  }
+};

@@ -12,6 +12,8 @@ import StoreManagement from './stores/page';
 import StockManagement from './adjustment/page';
 import StockMovements from './movements/page';
 import PricingManagement from './pricing/page';
+import LocationTransfer from './locationtransfer/page';
+import SimpleStockTake from './stocktake/page';
 
 const InventorySystem = () => {
   const { isAuthenticated, isInitialized } = useAuth();
@@ -37,6 +39,12 @@ const InventorySystem = () => {
       case 'items':
         return <ItemManagement />;
 
+
+      case 'transfers':
+        return (
+         <LocationTransfer />
+        );
+
       case 'movements':
         return (
          <StockMovements />
@@ -52,6 +60,9 @@ const InventorySystem = () => {
           <PricingManagement />
         );
 
+      case 'stocktake':
+        return <SimpleStockTake />;
+
       default:
         return <StoreManagement />;
     }
@@ -60,7 +71,7 @@ const InventorySystem = () => {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
+        {/* <Navbar /> */}
         
         <div className="flex flex-1">
           <InventorySidebar 

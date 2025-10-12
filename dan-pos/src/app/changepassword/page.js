@@ -87,7 +87,7 @@ const ChangePassword = () => {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        {/* <Navbar /> */}
         <main className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="space-y-6">
 
