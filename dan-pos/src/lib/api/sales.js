@@ -944,3 +944,56 @@ export const canVoidInvoice = async (invoiceId) => {
     return { canVoid: false, reason: 'Error checking invoice status' };
   }
 };
+
+
+
+// for sales report  
+// Sales Report operations
+export const getDetailedSalesReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/sales/detailed-sales-reports/detailed_sales_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch detailed sales report');
+  }
+};
+
+export const getSummarySalesReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/sales/detailed-sales-reports/summary_sales_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch summary sales report');
+  }
+};
+
+export const getDateRangeSummary = async (params = {}) => {
+  try {
+    const response = await api.get('/api/sales/detailed-sales-reports/date_range_summary/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch date range summary');
+  }
+};
+
+
+// Daily Payments Report
+export const getDailyPaymentsReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/sales/detailed-sales-reports/daily_payments_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch daily payments report');
+  }
+};
+
+// Enhanced Summary Report
+export const getEnhancedSummaryReport = async (params = {}) => {
+  try {
+    const response = await api.get('/api/sales/detailed-sales-reports/enhanced_summary_sales_report/', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch enhanced summary report');
+  }
+};
+

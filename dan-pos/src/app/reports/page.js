@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { DollarSign, BarChart3, FileText } from "lucide-react";
 import SalesDashboard from "./sales/page";
 import InventoryDashboard from "./inventory/page";
+import SalesReports from "@/components/reports/SalesReports";
 
 const ReportsSystem = () => {
   const [activeTab, setActiveTab] = useState("sales");
@@ -19,20 +20,7 @@ const ReportsSystem = () => {
         return <InventoryDashboard />;
       case "financial":
         return (
-          <Card className="mt-6 border border-gray-200 shadow-sm w-full h-full">
-            <CardHeader>
-              <CardTitle>Financial Reports</CardTitle>
-              <CardDescription>
-                Analyze Profit & Loss, Balance Sheets, and Cash Flow data.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-[60vh] text-gray-500">
-              <div className="text-center">
-                <FileText className="h-14 w-14 mx-auto mb-4 text-purple-500" />
-                <p>Financial Reports Overview</p>
-              </div>
-            </CardContent>
-          </Card>
+          <SalesReports/>
         );
       default:
         return null;

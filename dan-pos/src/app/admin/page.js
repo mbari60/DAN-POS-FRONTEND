@@ -61,6 +61,8 @@ import {
   voidSaleReturn
 } from '@/lib/api/sales';
 import { VoidDialog } from "@/components/voiding/voiding";
+// import VoidDialog from "@/components/voiding/voiding";
+// import { VoidDialog } from "@/components/voiding/voiding";
 
 const AdminSystem = () => {
   const { user, isAuthenticated, isInitialized } = useAuth();
