@@ -31,7 +31,7 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
     { id: "payments", name: "payments", icon: Receipt },
     { id: "balances", name: "Customer Balances", icon: Receipt },
     { id: "expenses", name: "Expenses", icon: Receipt },
-    
+    { id: "documents", name: "Documents", icon: FileText },
   ];
 
   // Fetch user profile data
@@ -67,7 +67,8 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
         ? `${currentUser.first_name} ${currentUser.last_name}`
         : currentUser.full_name || currentUser.username || "User";
 
-    const roleName = currentUser.role?.name || currentUser.role_info?.name || "User";
+    const roleName =
+      currentUser.role?.name || currentUser.role_info?.name || "User";
 
     return { name: displayName, role: roleName };
   };
@@ -103,9 +104,8 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
         >
           <X className="h-5 w-5" />
         </button>
-
         {/* Desktop toggle button */}
-        <button
+        {/* <button
           className="hidden lg:block absolute -right-3 top-8 bg-gray-900 border border-gray-700 text-white p-1 rounded-full shadow-lg hover:bg-gray-800 transition-colors z-10"
           onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
         >
@@ -114,8 +114,27 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
           ) : (
             <ChevronLeft className="h-4 w-4" />
           )}
+        </button> */}
+        <button
+          className="hidden lg:block absolute -right-3 top-8 bg-gray-900 border border-gray-700 text-white p-1 rounded-full shadow-lg hover:bg-gray-800 transition-colors z-10"
+          onClick={() => {
+            const newState = !isDesktopCollapsed;
+            setIsDesktopCollapsed(newState);
+            // Store state in localStorage
+            localStorage.setItem(
+              "pos_sidebar_collapsed",
+              JSON.stringify(newState)
+            );
+            // Dispatch event for other components to listen to
+            window.dispatchEvent(new Event("sidebarStateChange"));
+          }}
+        >
+          {isDesktopCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
         </button>
-
         <div className="flex flex-col h-full p-4">
           {/* User Info */}
           <div
@@ -126,17 +145,25 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
           >
             {!isDesktopCollapsed ? (
               <>
-                <p className="text-sm font-medium truncate" title={userDisplayInfo.name}>
+                <p
+                  className="text-sm font-medium truncate"
+                  title={userDisplayInfo.name}
+                >
                   {loadingProfile ? "Loading..." : userDisplayInfo.name}
                 </p>
-                <p className="text-xs text-gray-400 truncate" title={userDisplayInfo.role}>
+                <p
+                  className="text-xs text-gray-400 truncate"
+                  title={userDisplayInfo.role}
+                >
                   {loadingProfile ? "" : userDisplayInfo.role}
                 </p>
               </>
             ) : (
               <div className="flex justify-center">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold">
-                  {loadingProfile ? "?" : (userDisplayInfo.name?.charAt(0) || "U")}
+                  {loadingProfile
+                    ? "?"
+                    : userDisplayInfo.name?.charAt(0) || "U"}
                 </div>
               </div>
             )}
@@ -156,13 +183,21 @@ const POSSidebar = ({ activeComponent, setActiveComponent }) => {
                       activeComponent === item.id
                         ? "bg-blue-600 text-white"
                         : "text-gray-300 hover:bg-gray-800 hover:text-white",
-                      isDesktopCollapsed && "lg:px-3 lg:justify-center lg:relative group"
+                      isDesktopCollapsed &&
+                        "lg:px-3 lg:justify-center lg:relative group"
                     )}
                     title={isDesktopCollapsed ? item.name : undefined}
                   >
-                    <item.icon className={cn("h-5 w-5 flex-shrink-0", !isDesktopCollapsed && "mr-3")} />
+                    <item.icon
+                      className={cn(
+                        "h-5 w-5 flex-shrink-0",
+                        !isDesktopCollapsed && "mr-3"
+                      )}
+                    />
 
-                    {!isDesktopCollapsed && <span className="truncate">{item.name}</span>}
+                    {!isDesktopCollapsed && (
+                      <span className="truncate">{item.name}</span>
+                    )}
 
                     {/* Tooltip for collapsed state */}
                     {isDesktopCollapsed && (

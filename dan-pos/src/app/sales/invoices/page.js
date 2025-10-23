@@ -1,15 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+"use client";
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  User, Store, DollarSign, ShoppingCart, Plus, Trash2, 
+  User, Store, ShoppingCart, Plus, Trash2, 
   Search, AlertCircle, CheckCircle, Loader2, Save, 
-  Calculator, CreditCard, Banknote, Receipt, FileText 
+  Calculator, CreditCard, FileText, Printer, X,
+  Package, Receipt, Download, ArrowLeft
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 // Import your actual API service
 import { api } from "@/services/api";
-// import { getStores } from '@/lib/api/possale';
 import { getCurrentUserStores } from '@/lib/api/inventory';
+import EnhancedSuccessModal from '@/components/docsmodal/EnhancedSuccessModal';
+import { generatePDFFromElement, printElementAsPDF } from '@/lib/api/saleinvoicesapi';
 
 // API functions for sale invoice operations
 const saleInvoiceAPI = {
@@ -17,11 +21,6 @@ const saleInvoiceAPI = {
     const response = await api.get('/api/sales/customers/', { params });
     return response.data;
   },
-  
-  // getStores: async () => {
-  //   const response = await api.get('/api/inventory/stores/');
-  //   return response.data;
-  // },
   
   getSalesTypes: async () => {
     const response = await api.get('/api/inventory/sales-types/');
@@ -118,7 +117,6 @@ const saleInvoiceAPI = {
     if (!formData.customer) errors.customer = 'Customer is required';
     if (!formData.store) errors.store = 'Store is required';
     if (!formData.salesType) errors.salesType = 'Sales type is required';
-    if (!formData.paymentMethod) errors.paymentMethod = 'Payment method is required';
     if (!formData.items || formData.items.length === 0) errors.items = 'At least one item is required';
     
     return {
@@ -128,7 +126,7 @@ const saleInvoiceAPI = {
   }
 };
 
-// Enhanced Validation Results Display Component
+// Validation Results Display Component
 const ValidationResultsDisplay = ({ validationResult }) => {
   if (!validationResult || validationResult.can_proceed) {
     return null;
@@ -141,7 +139,6 @@ const ValidationResultsDisplay = ({ validationResult }) => {
         <h4 className="font-medium text-red-900">Validation Issues Found</h4>
       </div>
       
-      {/* Customer Issues */}
       {validationResult.validations?.customer && !validationResult.validations.customer.approved && (
         <div className="mb-3 p-3 bg-red-100 rounded">
           <h5 className="font-medium text-red-800 mb-1">Customer Credit Issue:</h5>
@@ -155,7 +152,6 @@ const ValidationResultsDisplay = ({ validationResult }) => {
         </div>
       )}
 
-      {/* Stock Issues */}
       {validationResult.validations?.stock && !validationResult.validations.stock.approved && (
         <div className="mb-3 p-3 bg-orange-100 rounded">
           <h5 className="font-medium text-orange-800 mb-2">Stock Issues:</h5>
@@ -171,7 +167,6 @@ const ValidationResultsDisplay = ({ validationResult }) => {
         </div>
       )}
 
-      {/* Price Issues */}
       {validationResult.validations?.prices && !validationResult.validations.prices.approved && (
         <div className="mb-3 p-3 bg-yellow-100 rounded">
           <h5 className="font-medium text-yellow-800 mb-2">Price Issues:</h5>
@@ -186,10 +181,128 @@ const ValidationResultsDisplay = ({ validationResult }) => {
           </ul>
         </div>
       )}
+    </div>
+  );
+};
 
-      <div className="mt-3 text-sm text-red-600">
-        <strong>Summary:</strong> {validationResult.summary?.total_items} item(s) for {validationResult.summary?.customer_name} 
-        via {validationResult.summary?.payment_method} - Total: {saleInvoiceAPI.formatCurrency(validationResult.total_amount)}
+// Quick Preview Component
+const QuickPreview = ({ formData, customers, stores, onClose }) => {
+  const previewRef = useRef();
+  const currentCustomer = customers.find(c => c.id === parseInt(formData.customer));
+  const currentStore = stores.find(s => s.id === parseInt(formData.store));
+
+  const handlePrint = async () => {
+    if (previewRef.current) {
+      await printElementAsPDF(previewRef.current);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (previewRef.current) {
+      await generatePDFFromElement(previewRef.current, `invoice_draft_${Date.now()}.pdf`);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Invoice Preview</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        
+        <div className="flex-1 overflow-auto p-4">
+          <div ref={previewRef} className="bg-white p-6 border border-gray-200 rounded-lg">
+            <div className="text-center mb-6 border-b pb-4">
+              <h1 className="text-2xl font-bold text-gray-900">INVOICE DRAFT</h1>
+              <p className="text-gray-600">Prepared on {new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Bill To:</h3>
+                <p className="text-gray-800 font-medium">{currentCustomer?.name || 'Customer'}</p>
+                <p className="text-gray-600 text-sm">{currentCustomer?.customer_code || ''}</p>
+                <p className="text-gray-600 text-sm">{currentCustomer?.phone || ''}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Store:</h3>
+                <p className="text-gray-800 font-medium">{currentStore?.name || 'Store'}</p>
+                <p className="text-gray-600 text-sm">{currentStore?.location || ''}</p>
+              </div>
+            </div>
+
+            <table className="w-full border-collapse border border-gray-300 mb-6">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">Item</th>
+                  <th className="border border-gray-300 px-4 py-2 text-center font-semibold">Qty</th>
+                  <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Price</th>
+                  <th className="border border-gray-300 px-4 py-2 text-right font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.items.map((item, index) => (
+                  <tr key={index}>
+                    <td className="border border-gray-300 px-4 py-2">{item.itemName}</td>
+                    <td className="border border-gray-300 px-4 py-2 text-center">{item.quantity}</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">{saleInvoiceAPI.formatCurrency(item.price)}</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right font-medium">
+                      {saleInvoiceAPI.formatCurrency(item.price * item.quantity)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="flex justify-end mb-6">
+              <div className="text-right">
+                <div className="text-lg font-bold text-gray-900">
+                  Total: {saleInvoiceAPI.formatCurrency(formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Payment Method: {formData.paymentMethod}
+                </div>
+              </div>
+            </div>
+
+            {formData.notes && (
+              <div className="border-t pt-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Notes:</h4>
+                <p className="text-gray-700 text-sm">{formData.notes}</p>
+              </div>
+            )}
+
+            <div className="border-t pt-4 text-center text-xs text-gray-500">
+              <p>This is a draft document for review purposes only</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 p-4 border-t border-gray-200">
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            <Printer className="w-4 h-4" />
+            Print Draft
+          </button>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -201,7 +314,7 @@ const CreateSaleInvoice = () => {
     customer: '',
     store: '',
     salesType: '',
-    paymentMethod: 'cash',
+    paymentMethod: 'credit',
     notes: '',
     items: []
   });
@@ -221,6 +334,8 @@ const CreateSaleInvoice = () => {
   const [errors, setErrors] = useState({});
   const [validationResult, setValidationResult] = useState(null);
   const [showItemSearch, setShowItemSearch] = useState(false);
+  const [createdInvoice, setCreatedInvoice] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Invoice totals
   const [totals, setTotals] = useState({
@@ -234,27 +349,26 @@ const CreateSaleInvoice = () => {
   }, []);
 
   // Load customers, stores, and sales types
-const loadInitialData = async () => {
-  setLoading(true);
-  try {
-    const [customersResponse, storesResponse, salesTypesResponse] = await Promise.all([
-      saleInvoiceAPI.getCustomers(),
-      getCurrentUserStores(),
-      saleInvoiceAPI.getSalesTypes()
-    ]);
+  const loadInitialData = async () => {
+    setLoading(true);
+    try {
+      const [customersResponse, storesResponse, salesTypesResponse] = await Promise.all([
+        saleInvoiceAPI.getCustomers(),
+        getCurrentUserStores(),
+        saleInvoiceAPI.getSalesTypes()
+      ]);
 
-    setCustomers(customersResponse.results || customersResponse);
-    // CORRECTION: Access the assigned_stores array
-    setStores(storesResponse.assigned_stores || []);
-    setSalesTypes(salesTypesResponse.results || salesTypesResponse);
-  } catch (error) {
-    console.error('Error loading initial data:', error);
-    toast.error('Failed to load initial data');
-    setErrors({ general: 'Failed to load initial data' });
-  } finally {
-    setLoading(false);
-  }
-};
+      setCustomers(customersResponse.results || customersResponse);
+      setStores(storesResponse.assigned_stores || []);
+      setSalesTypes(salesTypesResponse.results || salesTypesResponse);
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      toast.error('Failed to load initial data');
+      setErrors({ general: 'Failed to load initial data' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Load items when sales type and store are selected
   const loadItemsForSalesType = useCallback(async () => {
@@ -267,14 +381,14 @@ const loadInitialData = async () => {
       setItemsLoading(true);
       const response = await saleInvoiceAPI.getItemsBySalesType(
         formData.salesType,
-        true, // include stock info
+        true,
         formData.store
       );
 
       if (response.success && response.data.items) {
         setAvailableItems(response.data.items);
         
-        // Update prices and stock for existing items in the invoice
+        // Update prices and stock for existing items
         if (formData.items.length > 0) {
           updateExistingItemsPricesAndStock(response.data.items);
         }
@@ -282,13 +396,12 @@ const loadInitialData = async () => {
     } catch (error) {
       console.error('Error loading items:', error);
       toast.error('Failed to load items for selected sales type and store');
-      setErrors({ items: 'Failed to load items for selected sales type' });
     } finally {
       setItemsLoading(false);
     }
   }, [formData.salesType, formData.store]);
 
-  // Update existing items with new prices and stock when sales type or store changes
+  // Update existing items with new prices and stock
   const updateExistingItemsPricesAndStock = (newItems) => {
     setFormData(prev => {
       const updatedItems = prev.items.map(existingItem => {
@@ -308,8 +421,6 @@ const loadInitialData = async () => {
         items: updatedItems
       };
     });
-
-    toast.success('Item prices and stock updated based on new selection');
   };
 
   useEffect(() => {
@@ -359,13 +470,11 @@ const loadInitialData = async () => {
     const existingIndex = formData.items.findIndex(i => i.itemId === item.item_id);
     
     if (existingIndex >= 0) {
-      // Increase quantity if item already exists
       const updatedItems = [...formData.items];
       updatedItems[existingIndex].quantity += 1;
       setFormData(prev => ({ ...prev, items: updatedItems }));
       toast.success(`Increased quantity for ${item.item_name}`);
     } else {
-      // Add new item
       const newItem = {
         itemId: item.item_id,
         itemName: item.item_name,
@@ -390,7 +499,6 @@ const loadInitialData = async () => {
     const newQuantity = Math.max(0, parseInt(quantity) || 0);
     updatedItems[index].quantity = newQuantity;
     
-    // Check if quantity exceeds available stock
     if (newQuantity > updatedItems[index].availableStock) {
       toast.warning(`Quantity exceeds available stock (${updatedItems[index].availableStock})`);
     }
@@ -406,17 +514,13 @@ const loadInitialData = async () => {
     toast.success(`Removed ${removedItem.itemName} from invoice`);
   };
 
-  // Corrected validateForm function
+  // Validate form
   const validateForm = async () => {
     const validation = saleInvoiceAPI.validateInvoiceForm(formData);
-    console.log("Form validation:", validation);
-    console.log("Items to validate:", formData.items);
-    
     setErrors(validation.errors);
     
     if (validation.isValid && formData.items.length > 0) {
       try {
-        // Prepare validation data
         const validationData = {
           customerId: parseInt(formData.customer),
           storeId: parseInt(formData.store),
@@ -428,24 +532,16 @@ const loadInitialData = async () => {
           }))
         };
         
-        console.log("Sending validation data:", validationData);
-        
         const apiValidation = await saleInvoiceAPI.validateInvoiceCreation(validationData);
-        console.log("API validation response:", apiValidation);
-        
         setValidationResult(apiValidation);
         
-        // Handle different validation scenarios
         if (!apiValidation.can_proceed) {
-          // Build error messages based on validation results
           const errorMessages = [];
           
-          // Check customer validation
           if (apiValidation.validations?.customer && !apiValidation.validations.customer.approved) {
             errorMessages.push(`Customer Issue: ${apiValidation.validations.customer.message}`);
           }
           
-          // Check stock validation
           if (apiValidation.validations?.stock && !apiValidation.validations.stock.approved) {
             const stockIssues = apiValidation.validations.stock.results
               ?.filter(r => !r.available)
@@ -455,12 +551,6 @@ const loadInitialData = async () => {
             }
           }
           
-          // Check price validation
-          if (apiValidation.validations?.prices && !apiValidation.validations.prices.approved) {
-            errorMessages.push("Price validation failed");
-          }
-          
-          // Show appropriate error message
           if (errorMessages.length > 0) {
             toast.error(errorMessages.join(' | '));
           } else {
@@ -469,8 +559,7 @@ const loadInitialData = async () => {
           
           return false;
         } else {
-          // Validation passed
-          toast.success("Validation successful! You can proceed with creating the invoice.");
+          toast.success("Validation successful! Ready to create invoice.");
           return true;
         }
         
@@ -482,7 +571,6 @@ const loadInitialData = async () => {
       }
     }
     
-    // Form validation failed
     if (!validation.isValid) {
       toast.error("Please fill in all required fields");
     }
@@ -500,7 +588,6 @@ const loadInitialData = async () => {
     setSubmitLoading(true);
     try {
       const invoiceData = saleInvoiceAPI.formatInvoiceData(formData);
-      console.log("Submitting invoice data:", invoiceData);
       
       let response;
       if (formData.paymentMethod === 'credit') {
@@ -509,22 +596,9 @@ const loadInitialData = async () => {
         response = await saleInvoiceAPI.createPOSInvoice(invoiceData);
       }
 
-      console.log("Invoice creation response:", response);
-
-      // Success notification
+      // Set created invoice for success modal
+      setCreatedInvoice(response);
       toast.success('Invoice created successfully!');
-      
-      // Reset form
-      setFormData({
-        customer: '',
-        store: '',
-        salesType: '',
-        paymentMethod: 'cash',
-        notes: '',
-        items: []
-      });
-      setValidationResult(null);
-      setErrors({});
       
     } catch (error) {
       console.error("Invoice creation error:", error);
@@ -541,7 +615,7 @@ const loadInitialData = async () => {
       customer: '',
       store: '',
       salesType: '',
-      paymentMethod: 'cash',
+      paymentMethod: 'credit',
       notes: '',
       items: []
     });
@@ -549,7 +623,14 @@ const loadInitialData = async () => {
     setValidationResult(null);
     setSelectedCustomer(null);
     setAvailableItems([]);
+    setCreatedInvoice(null);
     toast.info('Form cleared');
+  };
+
+  // Close success modal
+  const handleCloseSuccessModal = () => {
+    setCreatedInvoice(null);
+    handleClearForm();
   };
 
   // Filter items based on search
@@ -560,7 +641,7 @@ const loadInitialData = async () => {
 
   if (loading && !customers.length) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         <span className="ml-2 text-gray-600">Loading...</span>
       </div>
@@ -568,357 +649,491 @@ const loadInitialData = async () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Receipt className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Create Sale Invoice</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Create Sale Invoice</h1>
+              <p className="text-gray-600">Create new sales invoices with delivery notes</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-sm text-gray-500">Current User</div>
+              <div className="font-medium text-gray-900">Sales Agent</div>
+            </div>
+          </div>
         </div>
-        <p className="text-gray-600">Create a new sales invoice for your customer</p>
       </div>
 
-      {errors.general && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <span className="text-red-700">{errors.general}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Header Information */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 bg-gray-50 rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-900 col-span-full mb-4">Invoice Details</h2>
-          
-          {/* Customer Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <User className="w-4 h-4 inline mr-2" />
-              Customer *
-            </label>
-            <select
-              value={formData.customer}
-              onChange={(e) => handleFieldChange('customer', e.target.value)}
-              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.customer ? 'border-red-300' : 'border-gray-300'
-              }`}
-              required
-            >
-              <option value="">Select Customer</option>
-              {customers.map(customer => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name} ({customer.customer_code})
-                </option>
-              ))}
-            </select>
-            {errors.customer && <p className="mt-1 text-sm text-red-600">{errors.customer}</p>}
-          </div>
-
-          {/* Store Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Store className="w-4 h-4 inline mr-2" />
-              Store *
-            </label>
-            <select
-              value={formData.store}
-              onChange={(e) => handleFieldChange('store', e.target.value)}
-              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.store ? 'border-red-300' : 'border-gray-300'
-              }`}
-              required
-            >
-              <option value="">Select Store</option>
-              {stores.map(store => (
-                <option key={store.id} value={store.id}>
-                  {store.name} ({store.location})
-                </option>
-              ))}
-            </select>
-            {errors.store && <p className="mt-1 text-sm text-red-600">{errors.store}</p>}
-          </div>
-
-          {/* Sales Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <FileText className="w-4 h-4 inline mr-2" />
-              Sales Type *
-            </label>
-            <select
-              value={formData.salesType}
-              onChange={(e) => handleFieldChange('salesType', e.target.value)}
-              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.salesType ? 'border-red-300' : 'border-gray-300'
-              }`}
-              required
-            >
-              <option value="">Select Sales Type</option>
-              {salesTypes.map(salesType => (
-                <option key={salesType.id} value={salesType.id}>
-                  {salesType.name} - {salesType.description}
-                </option>
-              ))}
-            </select>
-            {errors.salesType && <p className="mt-1 text-sm text-red-600">{errors.salesType}</p>}
-          </div>
-
-          {/* Payment Method */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <DollarSign className="w-4 h-4 inline mr-2" />
-              Payment Method *
-            </label>
-            <select
-              value={formData.paymentMethod}
-              onChange={(e) => handleFieldChange('paymentMethod', e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option value="cash">Cash</option>
-              <option value="credit">Credit</option>
-              <option value="mpesa">M-Pesa</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="cheque">Cheque</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Customer Information Display */}
-        {selectedCustomer && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-900 mb-2">Customer Information</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-blue-700">Credit Limit:</span>
-                <span className="ml-2 font-medium">{saleInvoiceAPI.formatCurrency(selectedCustomer.credit_limit)}</span>
-              </div>
-              <div>
-                <span className="text-blue-700">Current Balance:</span>
-                <span className="ml-2 font-medium">{saleInvoiceAPI.formatCurrency(selectedCustomer.current_balance)}</span>
-              </div>
-            </div>
+      {/* Main Content */}
+      <div className="p-6">
+        {errors.general && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <span className="text-red-700">{errors.general}</span>
           </div>
         )}
 
-        {/* Items Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5" />
-              Invoice Items
-              {itemsLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setShowItemSearch(true)}
-              disabled={!formData.salesType || !formData.store || itemsLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-4 h-4" />
-              Add Item
-            </button>
-          </div>
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
+          {/* Left Sidebar - Form */}
+          <div className="xl:col-span-3 space-y-6 overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Customer & Store Information */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Customer & Store
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Customer *
+                    </label>
+                    <select
+                      value={formData.customer}
+                      onChange={(e) => handleFieldChange('customer', e.target.value)}
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.customer ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">Select Customer</option>
+                      {customers.map(customer => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name} ({customer.customer_code})
+                        </option>
+                      ))}
+                    </select>
+                    {errors.customer && <p className="mt-1 text-sm text-red-600">{errors.customer}</p>}
+                  </div>
 
-          {!formData.salesType || !formData.store ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800">Please select a store and sales type to add items</p>
-            </div>
-          ) : null}
-
-          {/* Items List */}
-          {formData.items.length > 0 && (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Item</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">SKU</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Price</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Quantity</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Total</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Stock</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {formData.items.map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {item.itemName}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{item.sku}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {saleInvoiceAPI.formatCurrency(item.price)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          min="1"
-                          max={item.availableStock}
-                          value={item.quantity}
-                          onChange={(e) => updateItemQuantity(index, e.target.value)}
-                          className="w-20 p-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {saleInvoiceAPI.formatCurrency(item.price * item.quantity)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <span className={item.availableStock < item.quantity ? 'text-red-600' : 'text-green-600'}>
-                          {item.availableStock}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {errors.items && <p className="text-sm text-red-600">{errors.items}</p>}
-        </div>
-
-        {/* Item Search Modal */}
-        {showItemSearch && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg w-full max-w-2xl max-h-96 flex flex-col">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Add Item</h3>
-                <div className="mt-2 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search items..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Store *
+                    </label>
+                    <select
+                      value={formData.store}
+                      onChange={(e) => handleFieldChange('store', e.target.value)}
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.store ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">Select Store</option>
+                      {stores.map(store => (
+                        <option key={store.id} value={store.id}>
+                          {store.name} - {store.location}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.store && <p className="mt-1 text-sm text-red-600">{errors.store}</p>}
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
-                {itemsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                    <span className="ml-2 text-gray-600">Loading items...</span>
+
+              {/* Sales Type & Payment */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                  Sales & Payment
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sales Type *
+                    </label>
+                    <select
+                      value={formData.salesType}
+                      onChange={(e) => handleFieldChange('salesType', e.target.value)}
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.salesType ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">Select Sales Type</option>
+                      {salesTypes.map(salesType => (
+                        <option key={salesType.id} value={salesType.id}>
+                          {salesType.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.salesType && <p className="mt-1 text-sm text-red-600">{errors.salesType}</p>}
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Payment Method *
+                    </label>
+                    <select
+                      value={formData.paymentMethod}
+                      onChange={(e) => handleFieldChange('paymentMethod', e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="credit">Credit</option>
+                      <option value="cash">Cash</option>
+                      <option value="mpesa">M-Pesa</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Items Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  Invoice Items
+                  {itemsLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowItemSearch(true)}
+                  disabled={!formData.salesType || !formData.store || itemsLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {!formData.salesType || !formData.store ? (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800">Please select a store and sales type to add items</p>
+                </div>
+              ) : null}
+
+              {/* Items List */}
+              {formData.items.length > 0 ? (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Item</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Price</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Quantity</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Total</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Stock</th>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {formData.items.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{item.itemName}</div>
+                              <div className="text-sm text-gray-500">{item.sku}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {saleInvoiceAPI.formatCurrency(item.price)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <input
+                              type="number"
+                              min="1"
+                              max={item.availableStock}
+                              value={item.quantity}
+                              onChange={(e) => updateItemQuantity(index, e.target.value)}
+                              className="w-20 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            {saleInvoiceAPI.formatCurrency(item.price * item.quantity)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            <span className={item.availableStock < item.quantity ? 'text-red-600' : 'text-green-600'}>
+                              {item.availableStock}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              type="button"
+                              onClick={() => removeItem(index)}
+                              className="text-red-600 hover:text-red-800 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">No items added yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Click "Add Item" to start building your invoice</p>
+                </div>
+              )}
+
+              {errors.items && <p className="text-sm text-red-600 mt-2">{errors.items}</p>}
+            </div>
+
+            {/* Notes Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Additional Notes (Optional)
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => handleFieldChange('notes', e.target.value)}
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter any additional notes for this invoice..."
+              />
+            </div>
+
+            {/* Validation Results */}
+            <ValidationResultsDisplay validationResult={validationResult} />
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={submitLoading || formData.items.length === 0}
+                className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex-1"
+              >
+                {submitLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <div className="space-y-2">
-                    {filteredItems.map(item => (
-                      <div
-                        key={item.item_id}
-                        onClick={() => addItem(item)}
-                        className="p-3 border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer flex justify-between items-center"
-                      >
-                        <div>
-                          <h4 className="font-medium text-gray-900">{item.item_name}</h4>
-                          <p className="text-sm text-gray-600">SKU: {item.item_sku}</p>
-                          <p className="text-sm text-green-600">Stock: {item.stock_info?.quantity || 0}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">
-                            {saleInvoiceAPI.formatCurrency(item.price_info?.price || 0)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {filteredItems.length === 0 && !itemsLoading && (
-                      <div className="text-center py-8 text-gray-500">
-                        No items found matching your search
-                      </div>
-                    )}
+                  <CheckCircle className="w-4 h-4" />
+                )}
+                {submitLoading ? 'Creating Invoice...' : 'Create Invoice'}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                disabled={formData.items.length === 0}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Preview
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleClearForm}
+                disabled={submitLoading}
+                className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          {/* Right Sidebar - Summary & Info */}
+          <div className="xl:col-span-1 space-y-6">
+            {/* Customer Information */}
+            {selectedCustomer && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-600" />
+                  Customer Credit
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Credit Limit:</span>
+                    <span className="font-medium">{saleInvoiceAPI.formatCurrency(selectedCustomer.credit_limit)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Current Balance:</span>
+                    <span className="font-medium">{saleInvoiceAPI.formatCurrency(selectedCustomer.current_balance)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Available Credit:</span>
+                    <span className="font-medium text-green-600">
+                      {saleInvoiceAPI.formatCurrency(selectedCustomer.credit_limit - selectedCustomer.current_balance)}
+                    </span>
+                  </div>
+                  {formData.paymentMethod === 'credit' && totals.totalAmount > (selectedCustomer.credit_limit - selectedCustomer.current_balance) && (
+                    <div className="p-2 bg-red-100 border border-red-300 rounded text-red-700 text-xs">
+                      ⚠️ Exceeds available credit by {saleInvoiceAPI.formatCurrency(totals.totalAmount - (selectedCustomer.credit_limit - selectedCustomer.current_balance))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Invoice Summary */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-blue-600" />
+                Invoice Summary
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total Items:</span>
+                  <span className="font-medium">{totals.totalItems}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold border-t pt-3">
+                  <span className="text-gray-900">Total Amount:</span>
+                  <span className="text-green-600">{saleInvoiceAPI.formatCurrency(totals.totalAmount)}</span>
+                </div>
+                {formData.paymentMethod === 'credit' && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded text-blue-800 text-sm">
+                    <strong>Credit Sale:</strong> Customer will be invoiced for {saleInvoiceAPI.formatCurrency(totals.totalAmount)}
                   </div>
                 )}
               </div>
-              
-              <div className="p-4 border-t border-gray-200">
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
+              <div className="space-y-2">
                 <button
-                  type="button"
-                  onClick={() => {
-                    setShowItemSearch(false);
-                    setSearchTerm('');
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  onClick={() => setShowItemSearch(true)}
+                  disabled={!formData.salesType || !formData.store}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
                 >
-                  Close
+                  <Plus className="w-4 h-4" />
+                  Add Items
+                </button>
+                <button
+                  onClick={() => setShowPreview(true)}
+                  disabled={formData.items.length === 0}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Preview Draft
+                </button>
+                <button
+                  onClick={handleClearForm}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear Form
                 </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Invoice Summary */}
-        {formData.items.length > 0 && (
-          <div className="p-6 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Calculator className="w-5 h-5" />
-              Invoice Summary
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-sm">
-                <span className="text-gray-600">Total Items:</span>
-                <span className="ml-2 font-medium">{totals.totalItems}</span>
+      {/* Item Search Modal */}
+      {showItemSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Add Items to Invoice</h3>
+                <button
+                  onClick={() => {
+                    setShowItemSearch(false);
+                    setSearchTerm('');
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-              <div className="text-lg font-bold text-right">
-                <span className="text-gray-600">Total Amount:</span>
-                <span className="ml-2 text-green-600">{saleInvoiceAPI.formatCurrency(totals.totalAmount)}</span>
+              <div className="mt-4 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search items by name or SKU..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg"
+                  autoFocus
+                />
               </div>
             </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {itemsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-3 text-gray-600">Loading items...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredItems.map(item => (
+                    <div
+                      key={item.item_id}
+                      onClick={() => addItem(item)}
+                      className="p-4 border border-gray-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-all duration-200 hover:shadow-md"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-gray-900 text-sm line-clamp-2">{item.item_name}</h4>
+                        <div className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium ml-2 flex-shrink-0">
+                          Add
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-2">SKU: {item.item_sku}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-600 font-semibold">
+                          {saleInvoiceAPI.formatCurrency(item.price_info?.price || 0)}
+                        </span>
+                        <span className={`text-xs ${
+                          item.stock_info?.quantity > 0 ? 'text-gray-600' : 'text-red-600'
+                        }`}>
+                          Stock: {item.stock_info?.quantity || 0}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {filteredItems.length === 0 && !itemsLoading && (
+                    <div className="col-span-3 text-center py-12 text-gray-500">
+                      <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg">No items found matching your search</p>
+                      <p className="text-sm mt-2">Try a different search term or check your filters</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowItemSearch(false);
+                  setSearchTerm('');
+                }}
+                className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        )}
-
-        {/* Validation Results */}
-        <ValidationResultsDisplay validationResult={validationResult} />
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes (Optional)
-          </label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleFieldChange('notes', e.target.value)}
-            rows={3}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter any additional notes for this invoice..."
-          />
         </div>
+      )}
 
-        {/* Submit Button */}
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            disabled={submitLoading || formData.items.length === 0}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {submitLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            {submitLoading ? 'Creating Invoice...' : 'Create Invoice'}
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleClearForm}
-            disabled={submitLoading}
-            className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            Clear Form
-          </button>
-        </div>
-      </form>
+      {/* Quick Preview Modal */}
+      {showPreview && (
+        <QuickPreview
+          formData={formData}
+          customers={customers}
+          stores={stores}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {/* Enhanced Success Modal */}
+      {createdInvoice && (
+        <EnhancedSuccessModal 
+          invoice={createdInvoice} 
+          onClose={handleCloseSuccessModal}
+          autoPrint={true}
+        />
+      )}
     </div>
   );
 };

@@ -14,6 +14,7 @@ import CustomerPaymentsManagement from "./payments/page";
 import ExpensesManagement from "./expenses/page";
 import CustomerBalancesManagement from "./balances/page";
 import ReturnsManagement from "./returns/page";
+import DocumentsPage from "./docs/page";
 
 
 const SalesSystem = () => {
@@ -47,6 +48,8 @@ const SalesSystem = () => {
         return <ExpensesManagement />;
       case "balances":
         return <CustomerBalancesManagement />;
+      case "documents":
+        return < DocumentsPage />;
       default:
         return <POSSystem />;
     }
