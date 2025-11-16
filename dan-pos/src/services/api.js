@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken } from '@/lib/auth';
 import { toast } from 'react-toastify';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'https://dan-pos-4.onrender.com';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
