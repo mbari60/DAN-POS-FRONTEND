@@ -1,3 +1,5 @@
+"use client"
+
 // components/procurement/GoodsReceiptsManagement.js
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
