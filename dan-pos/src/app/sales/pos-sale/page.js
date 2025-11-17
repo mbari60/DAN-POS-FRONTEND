@@ -96,27 +96,59 @@ const POSSystem = () => {
   }, []);
 
   // Detect sidebar state from localStorage or DOM
+  // MY CODE 
+  // const detectSidebarState = () => {
+  //   const sidebarState = localStorage.getItem('pos_sidebar_collapsed');
+  //   if (sidebarState) {
+  //     setSidebarCollapsed(JSON.parse(sidebarState));
+  //   }
+  // };
+
   const detectSidebarState = () => {
+  // Add typeof window check
+  if (typeof window !== 'undefined') {
     const sidebarState = localStorage.getItem('pos_sidebar_collapsed');
     if (sidebarState) {
       setSidebarCollapsed(JSON.parse(sidebarState));
     }
-  };
+  }
+};
 
   // Update sidebar state when it changes
-  useEffect(() => {
-    const handleSidebarChange = () => {
-      detectSidebarState();
-    };
+  // MY CODE 
+  // useEffect(() => {
+  //   const handleSidebarChange = () => {
+  //     detectSidebarState();
+  //   };
 
+  //   window.addEventListener('storage', handleSidebarChange);
+  //   window.addEventListener('sidebarStateChange', handleSidebarChange);
+
+  //   return () => {
+  //     window.removeEventListener('storage', handleSidebarChange);
+  //     window.removeEventListener('sidebarStateChange', handleSidebarChange);
+  //   };
+  // }, []);
+
+useEffect(() => {
+  const handleSidebarChange = () => {
+    detectSidebarState();
+  };
+
+  // Only add event listeners on client side
+  if (typeof window !== 'undefined') {
     window.addEventListener('storage', handleSidebarChange);
     window.addEventListener('sidebarStateChange', handleSidebarChange);
+  }
 
-    return () => {
+  return () => {
+    if (typeof window !== 'undefined') {
       window.removeEventListener('storage', handleSidebarChange);
       window.removeEventListener('sidebarStateChange', handleSidebarChange);
-    };
-  }, []);
+    }
+  };
+}, []);
+
 
   const initializePOS = async () => {
     setLoading(true);
@@ -510,9 +542,33 @@ const POSSystem = () => {
   };
 
   // Pause cart
-  const pauseCart = () => {
-    if (cart.length === 0) return;
+  // MY CODE 
+  // const pauseCart = () => {
+  //   if (cart.length === 0) return;
 
+  //   const pausedCarts = JSON.parse(localStorage.getItem("pos_paused_carts") || "[]");
+  //   pausedCarts.push({
+  //     id: Date.now(),
+  //     timestamp: new Date().toISOString(),
+  //     items: cart,
+  //     store: selectedStore,
+  //     salesType: selectedSalesType,
+  //     useMultiplePayments,
+  //     payments,
+  //     customerName,
+  //   });
+
+  //   localStorage.setItem("pos_paused_carts", JSON.stringify(pausedCarts));
+  //   setCart([]);
+  //   setCustomerName("");
+  //   toast.success("Cart paused and saved");
+  // };
+
+  const pauseCart = () => {
+  if (cart.length === 0) return;
+
+  // Add typeof window check
+  if (typeof window !== 'undefined') {
     const pausedCarts = JSON.parse(localStorage.getItem("pos_paused_carts") || "[]");
     pausedCarts.push({
       id: Date.now(),
@@ -529,34 +585,70 @@ const POSSystem = () => {
     setCart([]);
     setCustomerName("");
     toast.success("Cart paused and saved");
-  };
+  }
+};
+
 
   // Resume paused cart
-  const resumeCart = (pausedCart) => {
-    setCart(pausedCart.items);
-    setSelectedStore(pausedCart.store);
-    setSelectedSalesType(pausedCart.salesType);
-    setUseMultiplePayments(pausedCart.useMultiplePayments || false);
-    setPayments(pausedCart.payments || [
-      { method: 'cash', amount: 0, reference: '' },
-      { method: 'mpesa', amount: 0, reference: '' },
-      { method: 'card', amount: 0, reference: '' },
-      { method: 'bank', amount: 0, reference: '' }
-    ]);
-    setCustomerName(pausedCart.customerName || "");
+  // MY CODE 
+  // const resumeCart = (pausedCart) => {
+  //   setCart(pausedCart.items);
+  //   setSelectedStore(pausedCart.store);
+  //   setSelectedSalesType(pausedCart.salesType);
+  //   setUseMultiplePayments(pausedCart.useMultiplePayments || false);
+  //   setPayments(pausedCart.payments || [
+  //     { method: 'cash', amount: 0, reference: '' },
+  //     { method: 'mpesa', amount: 0, reference: '' },
+  //     { method: 'card', amount: 0, reference: '' },
+  //     { method: 'bank', amount: 0, reference: '' }
+  //   ]);
+  //   setCustomerName(pausedCart.customerName || "");
 
+  //   const pausedCarts = JSON.parse(localStorage.getItem("pos_paused_carts") || "[]");
+  //   const updated = pausedCarts.filter((cart) => cart.id !== pausedCart.id);
+  //   localStorage.setItem("pos_paused_carts", JSON.stringify(updated));
+
+  //   toast.success("Cart resumed");
+  //   setTimeout(verifyCartStock, 100);
+  // };
+
+const resumeCart = (pausedCart) => {
+  setCart(pausedCart.items);
+  setSelectedStore(pausedCart.store);
+  setSelectedSalesType(pausedCart.salesType);
+  setUseMultiplePayments(pausedCart.useMultiplePayments || false);
+  setPayments(pausedCart.payments || [
+    { method: 'cash', amount: 0, reference: '' },
+    { method: 'mpesa', amount: 0, reference: '' },
+    { method: 'card', amount: 0, reference: '' },
+    { method: 'bank', amount: 0, reference: '' }
+  ]);
+  setCustomerName(pausedCart.customerName || "");
+
+  // Add typeof window check
+  if (typeof window !== 'undefined') {
     const pausedCarts = JSON.parse(localStorage.getItem("pos_paused_carts") || "[]");
     const updated = pausedCarts.filter((cart) => cart.id !== pausedCart.id);
     localStorage.setItem("pos_paused_carts", JSON.stringify(updated));
+  }
 
-    toast.success("Cart resumed");
-    setTimeout(verifyCartStock, 100);
-  };
+  toast.success("Cart resumed");
+  setTimeout(verifyCartStock, 100);
+};
 
   // Get paused carts
-  const getPausedCarts = () => {
+  // MY CODE 
+  // const getPausedCarts = () => {
+  //   return JSON.parse(localStorage.getItem("pos_paused_carts") || "[]");
+  // };
+
+const getPausedCarts = () => {
+  // Add typeof window check
+  if (typeof window !== 'undefined') {
     return JSON.parse(localStorage.getItem("pos_paused_carts") || "[]");
-  };
+  }
+  return []; // Return empty array during SSR
+};
 
   // Clear all messages
   const clearMessages = () => {
