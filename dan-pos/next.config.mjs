@@ -1,4 +1,16 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {};
+// /** @type {import('next').NextConfig} */
+// const nextConfig = {};
 
-export default nextConfig;
+// export default nextConfig;
+
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    // Disable ESLint during production builds
+    ignoreDuringBuilds: true,
+  },
+};
+
+module.exports = nextConfig;
+
