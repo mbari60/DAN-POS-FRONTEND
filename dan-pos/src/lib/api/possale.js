@@ -157,3 +157,27 @@ export const searchItemsByName = async (searchData) => {
   }
 };
 
+// Daily Report Functions
+export const getDailyReportPreview = async (date = null) => {
+  try {
+    const queryDate = date || new Date().toISOString().split('T')[0];
+    const response = await api.get(`/api/sales/reports/daily/preview/?date=${queryDate}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch daily report preview');
+  }
+};
+
+export const sendDailyReport = async (date = null, email = null) => {
+  try {
+    const payload = {};
+    if (date) payload.date = date;
+    if (email) payload.email = email;
+    
+    const response = await api.post('/api/sales/reports/daily/send/', payload);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to send daily report');
+  }
+};
+
